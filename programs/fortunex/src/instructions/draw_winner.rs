@@ -1,0 +1,65 @@
+use crate::{
+    DrawHistory, GlobalState, LotteryPool, DRAW_HISTORY_SEED, GLOBAL_STATE_SEED, LOTTERY_POOL_SEED,
+    VAULT_AUTHORITY_SEED,
+};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{Token, TokenAccount};
+
+#[derive(Accounts)]
+pub struct DrawWinner<'info> {
+    #[account(
+        seeds = [GLOBAL_STATE_SEED],
+        bump = global_state.bump
+    )]
+    pub global_state: Account<'info, GlobalState>,
+
+    #[account(
+        mut,
+        seeds = [LOTTERY_POOL_SEED, &global_state.key().to_bytes()],
+        bump = lottery_pool.bump
+    )]
+    pub lottery_pool: Account<'info, LotteryPool>,
+
+    #[account(
+        init,
+        payer = crank,
+        space = 8 + DrawHistory::INIT_SPACE,
+        seeds = [DRAW_HISTORY_SEED, lottery_pool.key().as_ref(), &lottery_pool.round_number.to_le_bytes()],
+        bump
+    )]
+    pub draw_history: Account<'info, DrawHistory>,
+
+    #[account(
+        mut,
+        token::mint = global_state.usdc_mint,
+        seeds = [VAULT_AUTHORITY_SEED, lottery_pool.key().as_ref()],
+        bump
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+
+    /// CHECK: This is a PDA used as authority for the vault
+    #[account(
+        seeds = [VAULT_AUTHORITY_SEED, lottery_pool.key().as_ref()],
+        bump
+    )]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        token::mint = global_state.usdc_mint
+    )]
+    pub winner_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = global_state.usdc_mint,
+        address = global_state.platform_wallet
+    )]
+    pub platform_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub crank: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
