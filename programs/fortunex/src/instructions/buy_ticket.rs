@@ -6,6 +6,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
 #[derive(Accounts)]
+#[instruction(pool_id: u64)]
 pub struct BuyTicket<'info> {
     #[account(
         seeds = [GLOBAL_STATE_SEED],
@@ -15,7 +16,7 @@ pub struct BuyTicket<'info> {
 
     #[account(
         mut,
-        seeds = [LOTTERY_POOL_SEED, &global_state.key().to_bytes()],
+        seeds = [LOTTERY_POOL_SEED, &pool_id.to_le_bytes()],
         bump = lottery_pool.bump
     )]
     pub lottery_pool: Account<'info, LotteryPool>,
@@ -24,7 +25,7 @@ pub struct BuyTicket<'info> {
         init,
         payer = user,
         space = 8 + UserTicket::INIT_SPACE,
-        seeds = [USER_TICKET_SEED, user.key().as_ref(), lottery_pool.key().as_ref(), &lottery_pool.round_number.to_le_bytes()],
+        seeds = [USER_TICKET_SEED, user.key().as_ref(), &pool_id.to_le_bytes()],
         bump
     )]
     pub user_ticket: Account<'info, UserTicket>,
@@ -39,10 +40,10 @@ pub struct BuyTicket<'info> {
     #[account(
         mut,
         token::mint = global_state.usdc_mint,
-        seeds = [VAULT_AUTHORITY_SEED, lottery_pool.key().as_ref()],
+        seeds = [VAULT_AUTHORITY_SEED, &pool_id.to_le_bytes()],
         bump
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
+    pub pool_token_account: Account<'info, TokenAccount>, // this account will hold the tokens of the pool
 
     #[account(mut)]
     pub user: Signer<'info>,

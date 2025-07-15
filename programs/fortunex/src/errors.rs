@@ -30,4 +30,12 @@ pub enum FortuneXError {
     InvalidDrawInterval,
     #[msg("Invalid platform fee")]
     InvalidPlatformFee,
+    #[msg("Creator is already whitelisted")]
+    CreatorAlreadyWhitelisted,
+    #[msg("Whitelist is full")]
+    WhitelistFull,
+    #[msg("Creator is not whitelisted")]
+    CreatorNotWhitelisted,
+    #[msg("Only whitelisted creators can create pools")]
+    CreatorNotAllowed,
 }

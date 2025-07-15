@@ -6,6 +6,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
 #[derive(Accounts)]
+#[instruction(pool_id: u64)]
 pub struct DrawWinner<'info> {
     #[account(
         seeds = [GLOBAL_STATE_SEED],
@@ -15,7 +16,7 @@ pub struct DrawWinner<'info> {
 
     #[account(
         mut,
-        seeds = [LOTTERY_POOL_SEED, &global_state.key().to_bytes()],
+        seeds = [LOTTERY_POOL_SEED, &pool_id.to_le_bytes()],
         bump = lottery_pool.bump
     )]
     pub lottery_pool: Account<'info, LotteryPool>,
@@ -24,7 +25,7 @@ pub struct DrawWinner<'info> {
         init,
         payer = crank,
         space = 8 + DrawHistory::INIT_SPACE,
-        seeds = [DRAW_HISTORY_SEED, lottery_pool.key().as_ref(), &lottery_pool.round_number.to_le_bytes()],
+        seeds = [DRAW_HISTORY_SEED, &pool_id.to_le_bytes()],
         bump
     )]
     pub draw_history: Account<'info, DrawHistory>,
@@ -32,14 +33,14 @@ pub struct DrawWinner<'info> {
     #[account(
         mut,
         token::mint = global_state.usdc_mint,
-        seeds = [VAULT_AUTHORITY_SEED, lottery_pool.key().as_ref()],
+        seeds = [VAULT_AUTHORITY_SEED, &pool_id.to_le_bytes()],
         bump
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
+    pub pool_token_account: Account<'info, TokenAccount>,
 
-    /// CHECK: This is a PDA used as authority for the vault
+    /// CHECK: This is a PDA used as authority for the pool's token account
     #[account(
-        seeds = [VAULT_AUTHORITY_SEED, lottery_pool.key().as_ref()],
+        seeds = [VAULT_AUTHORITY_SEED, &pool_id.to_le_bytes()],
         bump
     )]
     pub vault_authority: UncheckedAccount<'info>,
