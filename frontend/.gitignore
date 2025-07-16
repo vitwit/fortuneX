@@ -1,0 +1,115 @@
+# React Native
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+dist/
+build/
+.env
+.env.*.local
+
+# Metro bundler cache
+.expo/
+.expo-shared/
+*.expo
+
+# Babel cache
+babel.config.js
+.babelrc
+.babelrc.js
+.babelrc.json
+.babelrc.cjs
+babel.config.json
+babel.config.cjs
+
+# ESLint cache
+.eslintcache
+
+# React Native Packager
+$TMPDIR/react-*
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Android
+android/.gradle/
+android/.idea/
+android/.cxx/
+android/local.properties
+android/app/build/
+android/build/
+android/gradle.properties
+android/gradlew
+android/gradlew.bat
+android/gradle/
+android/**/*.iml
+android/.settings/
+
+# iOS
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+ios/*.xcodeproj/xcshareddata/WorkspaceSettings.xcsettings
+
+# Xcode
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcworkspace
+xcuserdata/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+*.ipa
+*.apk
+
+# Buck
+.buckconfig.local
+.buckd/
+buck-out/
+\.buckd/
+
+# VSCode
+.vscode/
+.history/
+
+# IntelliJ / WebStorm / IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# CocoaPods (iOS)
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Watchman
+.watchmanconfig
+
+# Misc
+*.log
+*.keystore
+*.jks
+
+# Test / coverage
+coverage/
+__tests__/*.log
+jest-test-results.json
+test-results/
