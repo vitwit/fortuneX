@@ -9,6 +9,7 @@ import {
   Animated,
   SafeAreaView,
   TouchableOpacity,
+  Button,
 } from 'react-native';
 
 import {Section} from '../components/Section';
@@ -19,13 +20,9 @@ import {
   Account,
 } from '../components/providers/AuthorizationProvider';
 import {useConnection} from '../components/providers/ConnectionProvider';
-import DisconnectButton from '../components/DisconnectButton';
-import RequestAirdropButton from '../components/RequestAirdropButton';
-import SignMessageButton from '../components/SignMessageButton';
-import SignTransactionButton from '../components/SignTransactionButton';
 import LotteryPoolsComponent from '../components/LotteryPool';
-
-const {width, height} = Dimensions.get('window');
+import {useNavigation} from '../components/providers/NavigationProvider';
+import LotteryPoolInfo from '../components/LotteryPoolInfo';
 
 export default function MainScreen() {
   const {connection} = useConnection();
@@ -33,6 +30,7 @@ export default function MainScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const {goBack, screen, params} = useNavigation();
 
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
@@ -108,53 +106,73 @@ export default function MainScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}>
         {selectedAccount ? (
-          <Animated.View
-            style={[
-              styles.contentContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{translateY: slideAnim}],
-              },
-            ]}>
-            {/* Wallet Info Card */}
-            <View style={styles.walletCard}>
-              <AccountInfo
-                selectedAccount={selectedAccount}
-                balance={balance}
-                fetchAndUpdateBalance={fetchAndUpdateBalance}
-              />
-            </View>
-
-            {/* Main Gaming Section */}
-            <View style={styles.gamingSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Join the Pool</Text>
-                <Text style={styles.sectionSubtitle}>
-                  Experience the thrill of decentralized gaming
-                </Text>
-              </View>
-
-              {/* Lottery Game Card */}
-              <View style={styles.gameCard}>
-                <View style={styles.gameHeader}>
-                  <View style={styles.gameIcon}>
-                    <Text style={styles.gameIconText}>🎰</Text>
-                  </View>
-                  <View style={styles.gameInfo}>
-                    <Text style={styles.gameTitle}>Active Pool</Text>
-                    <Text style={styles.gameDescription}>
-                      Join the pool and win big rewards
-                    </Text>
-                  </View>
-                  <View style={styles.gameStatus}>
-                    <Text style={styles.gameStatusText}>ACTIVE</Text>
-                  </View>
+          <View>
+            {screen === 'Home' && (
+              <Animated.View
+                style={[
+                  styles.contentContainer,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{translateY: slideAnim}],
+                  },
+                ]}>
+                {/* Wallet Info Card */}
+                <View style={styles.walletCard}>
+                  <AccountInfo
+                    selectedAccount={selectedAccount}
+                    balance={balance}
+                    fetchAndUpdateBalance={fetchAndUpdateBalance}
+                  />
                 </View>
 
-                <LotteryPoolsComponent />
-              </View>
-            </View>
-          </Animated.View>
+                {/* Main Gaming Section */}
+                <View style={styles.gamingSection}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Join the Pool</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Experience the thrill of decentralized gaming
+                    </Text>
+                  </View>
+
+                  {/* Lottery Game Card */}
+                  <View style={styles.gameCard}>
+                    <View style={styles.gameHeader}>
+                      <View style={styles.gameIcon}>
+                        <Text style={styles.gameIconText}>🎰</Text>
+                      </View>
+                      <View style={styles.gameInfo}>
+                        <Text style={styles.gameTitle}>Active Pool</Text>
+                        <Text style={styles.gameDescription}>
+                          Join the pool and win big rewards
+                        </Text>
+                      </View>
+                      <View style={styles.gameStatus}>
+                        <Text style={styles.gameStatusText}>ACTIVE</Text>
+                      </View>
+                    </View>
+
+                    <LotteryPoolsComponent />
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+            {screen === 'Pool' && (
+              <Animated.View
+                style={[
+                  styles.contentContainer,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{translateY: slideAnim}],
+                  },
+                ]}>
+                {/* Back Button at top-left */}
+                <View style={styles.header}>
+                  <Button title="← Back" onPress={goBack} />
+                </View>
+                <LotteryPoolInfo />
+              </Animated.View>
+            )}
+          </View>
         ) : (
           <Animated.View
             style={[
@@ -449,5 +467,15 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 10,
     textAlign: 'center',
+  },
+  content: {
+    marginTop: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  poolText: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });

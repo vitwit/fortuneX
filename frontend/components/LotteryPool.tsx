@@ -30,6 +30,7 @@ import {
 } from '@solana/web3.js';
 import {sha256} from '@noble/hashes/sha256';
 import {Buffer} from 'buffer';
+import {useNavigation} from './providers/NavigationProvider';
 
 const {width} = Dimensions.get('window');
 
@@ -74,6 +75,8 @@ export default function LotteryPoolsComponent(): JSX.Element {
     null,
   );
   const [pulseAnim] = useState(new Animated.Value(1));
+
+  const {params, navigate} = useNavigation();
 
   // Updated program ID
   const PROGRAM_ID = new PublicKey(
@@ -325,7 +328,9 @@ export default function LotteryPoolsComponent(): JSX.Element {
           styles.poolCard,
           selectedPool?.poolId === item.poolId && styles.selectedPoolCard,
         ]}
-        onPress={() => setSelectedPool(item)}
+        onPress={() => {
+          navigate('Pool', {poolId: item.poolId});
+        }}
         disabled={!isActive}>
         <View style={styles.poolHeader}>
           <Text style={styles.poolTitle}>Pool #{item.poolId}</Text>
