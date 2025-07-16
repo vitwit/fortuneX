@@ -40,4 +40,6 @@ pub enum FortuneXError {
     CreatorNotAllowed,
     #[msg("Arithmetic overflow occurred")]
     Overflow,
+    #[msg("Already participating")]
+    UserAlreadyParticipating,
 }
