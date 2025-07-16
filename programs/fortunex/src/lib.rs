@@ -33,6 +33,11 @@ pub mod fortunex {
         handlers::initialize_pool(ctx, draw_interval)
     }
 
+    // Update creators whitelist
+    pub fn update_whitelist(ctx: Context<UpdateWhitelist>, is_add: bool) -> Result<()> {
+        handlers::update_whitelist(ctx, is_add)
+    }
+
     // Buy a ticket for the lottery
     pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64) -> Result<()> {
         handlers::buy_ticket(ctx, pool_id)
