@@ -24,12 +24,6 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64) -> Result<()> {
         FortuneXError::PoolFull
     );
 
-    // Check if user already has a ticket in this pool (prevent duplicate purchases)
-    require!(
-        !lottery_pool.participants.contains(&user.key()),
-        FortuneXError::UserAlreadyParticipating
-    );
-
     // Validate ticket price matches expected amount
     require!(
         ctx.accounts.user_token_account.amount >= LotteryPool::TICKET_PRICE,
@@ -59,7 +53,7 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64) -> Result<()> {
     user_ticket.user = user.key();
     user_ticket.pool = lottery_pool.key();
     user_ticket.pool_id = pool_id;
-    user_ticket.ticket_number = lottery_pool.tickets_sold; // Assign ticket number (1-10)
+    user_ticket.ticket_number = lottery_pool.tickets_sold;
     user_ticket.amount_paid = LotteryPool::TICKET_PRICE;
     user_ticket.timestamp = clock.unix_timestamp;
     user_ticket.bump = ctx.bumps.user_ticket;

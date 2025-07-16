@@ -66,9 +66,9 @@ pub struct LotteryPool {
 }
 
 impl LotteryPool {
-    pub const MAX_PARTICIPANTS: usize = 10; // Exactly 10 participants per round
+    pub const MAX_PARTICIPANTS: usize = 5; // Exactly 10 participants per round
     pub const TICKET_PRICE: u64 = 10_000_000; // $10 USDC (6 decimals)
-    pub const MAX_PRIZE_POOL: u64 = 100_000_000; // $100 USDC (6 decimals)
+    pub const MAX_PRIZE_POOL: u64 = 10_000_000; // $100 USDC (6 decimals)
 }
 
 // User's ticket entry for the pool

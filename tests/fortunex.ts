@@ -280,7 +280,7 @@ describe("fortunex", () => {
     );
 
     // === 🧾 Step 1: 3 participants join and buy ticket ===
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const user = Keypair.generate();
       participants.push(user);
 
@@ -303,34 +303,34 @@ describe("fortunex", () => {
         usdcMint,
         userTokenAccount,
         authority.publicKey,
-        30_000_000 // 10 USDC
+        30_000_000 // 30 USDC
       );
 
       participantTokenAccounts.push(userTokenAccount);
 
-      const [userTicketPda] = PublicKey.findProgramAddressSync(
+      // 💰 Balance before buying
+      const balance = await provider.connection.getTokenAccountBalance(
+        userTokenAccount
+      );
+      console.log(`Participant ${i + 1} address: ${user.publicKey}`);
+      console.log(
+        `🔍 Participant ${i + 1} balance before: ${balance.value.uiAmount} USDC`
+      );
+
+      // First ticket
+      let pool = await program.account.lotteryPool.fetch(lotteryPoolPda);
+      let ticketNumber = new anchor.BN(pool.ticketsSold);
+      let [userTicketPda] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(USER_TICKET_SEED),
           user.publicKey.toBuffer(),
           new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
+          ticketNumber.toArrayLike(Buffer, "le", 8),
         ],
         program.programId
       );
 
-      // === 💰 Step 2: Show balances before draw ===
-      console.log("\n🔍 USDC Balances before buying tickets:");
-      // for (let i = 0; i < 2; i++) {
-      const balance = await provider.connection.getTokenAccountBalance(
-        participantTokenAccounts[i]
-      );
-      console.log(
-        `Participant ${i + 1}: ${balance.value.uiAmount}, ${
-          balance.value.decimals
-        } USDC`
-      );
-      // }
-
-      const tx = await program.methods
+      let tx = await program.methods
         .buyTicket(new anchor.BN(poolId))
         .accounts({
           globalState: globalStatePda,
@@ -345,20 +345,53 @@ describe("fortunex", () => {
         .signers([user])
         .rpc();
 
-      console.log(`Participant ${i + 1} bought ticket: ${tx}`);
+      console.log(`✅ Participant ${i + 1} bought ticket: ${tx}`);
+
+      // making the user1 to buy one more ticket
+      if (i === 0) {
+        // Second ticket
+        pool = await program.account.lotteryPool.fetch(lotteryPoolPda);
+        ticketNumber = new anchor.BN(pool.ticketsSold);
+        [userTicketPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from(USER_TICKET_SEED),
+            user.publicKey.toBuffer(),
+            new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
+            ticketNumber.toArrayLike(Buffer, "le", 8),
+          ],
+          program.programId
+        );
+
+        tx = await program.methods
+          .buyTicket(new anchor.BN(poolId))
+          .accounts({
+            globalState: globalStatePda,
+            lotteryPool: lotteryPoolPda,
+            userTicket: userTicketPda,
+            userTokenAccount: userTokenAccount,
+            poolTokenAccount: poolTokenAccount,
+            user: user.publicKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([user])
+          .rpc();
+
+        console.log(`✅ Participant ${i + 1} bought second ticket: ${tx}`);
+      }
+
+      console.log(
+        "           -----************************************-----          \n\n"
+      );
     }
 
     // === 💰 Step 2: Show balances before draw ===
     console.log("\n🔍 USDC Balances after buying tickets and before drawing:");
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const balance = await provider.connection.getTokenAccountBalance(
         participantTokenAccounts[i]
       );
-      console.log(
-        `Participant ${i + 1}: ${balance.value.uiAmount}, ${
-          balance.value.decimals
-        } USDC`
-      );
+      console.log(`Participant ${i + 1}: ${balance.value.uiAmount} USDC`);
     }
 
     // === 🎯 Step 3: Draw winner ===
@@ -403,7 +436,7 @@ describe("fortunex", () => {
 
     // === 🧾 Step 4: Show balances after draw ===
     console.log("\n🔍 USDC Balances after draw:");
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const balance = await provider.connection.getTokenAccountBalance(
         participantTokenAccounts[i]
       );

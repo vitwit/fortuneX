@@ -26,11 +26,12 @@ pub fn draw_winner<'info>(
         FortuneXError::PoolNotFull
     );
 
+    // TODO
     // Check if draw time has arrived
-    require!(
-        clock.unix_timestamp >= lottery_pool.draw_time,
-        FortuneXError::DrawTimeNotReached
-    );
+    // require!(
+    //     clock.unix_timestamp >= lottery_pool.draw_time,
+    //     FortuneXError::DrawTimeNotReached
+    // );
 
     // Validate that remaining accounts match participants
     require!(
@@ -41,7 +42,7 @@ pub fn draw_winner<'info>(
     // Generate random seed using clock and pool data
     let random_seed = {
         let mut seed = [0u8; 32];
-        let clock_bytes = clock.unix_timestamp.to_le_bytes();
+        let clock_bytes = clock.slot.to_le_bytes();
         let pool_bytes = pool_id.to_le_bytes();
         let slot_bytes = clock.slot.to_le_bytes();
 
@@ -93,6 +94,10 @@ pub fn draw_winner<'info>(
 
     // Calculate prize distribution
     let total_prize = lottery_pool.prize_pool;
+    // Calculate platform fee from prize pool using basis points (bps)
+    // bps = 100 bps means 1% platform fee, 1000 bps means 10%, 10,000 bps means 100%
+    // Example: if platform_fee_bps = 100 (1%), and total_prize = 100_000_000 (100 USDC),
+    // platform_fee = (100_000_000 * 100) / 10000 = 10_000_000 (10 USDC)
     let platform_fee = (total_prize * global_state.platform_fee_bps as u64) / 10000;
     let winner_prize = total_prize - platform_fee;
 
