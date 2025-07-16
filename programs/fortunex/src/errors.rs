@@ -38,4 +38,6 @@ pub enum FortuneXError {
     CreatorNotWhitelisted,
     #[msg("Only whitelisted creators can create pools")]
     CreatorNotAllowed,
+    #[msg("Arithmetic overflow occurred")]
+    Overflow,
 }

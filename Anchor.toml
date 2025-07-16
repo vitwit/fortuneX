@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-fortunex = "HZVuaH9kwqbcaDbntydUn9gjus9dT1LuCvXgGK2e3b21"
+fortunex = "HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu"
 
 [registry]
 url = "https://api.apr.dev"

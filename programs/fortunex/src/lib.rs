@@ -13,7 +13,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("HZVuaH9kwqbcaDbntydUn9gjus9dT1LuCvXgGK2e3b21");
+declare_id!("HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu");
 
 #[program]
 pub mod fortunex {
