@@ -47,14 +47,8 @@ pub struct DrawWinner<'info> {
 
     #[account(
         mut,
-        token::mint = global_state.usdc_mint
-    )]
-    pub winner_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
         token::mint = global_state.usdc_mint,
-        address = global_state.platform_wallet
+        token::authority = global_state.platform_wallet
     )]
     pub platform_token_account: Account<'info, TokenAccount>,
 
@@ -63,4 +57,6 @@ pub struct DrawWinner<'info> {
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    // remaining_accounts will contain all participant token accounts
+    // in the same order as lottery_pool.participants
 }

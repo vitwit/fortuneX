@@ -44,7 +44,10 @@ pub mod fortunex {
     }
 
     // Draw the winner
-    pub fn draw_winner(ctx: Context<DrawWinner>) -> Result<()> {
-        handlers::draw_winner(ctx)
+    pub fn draw_winner<'info>(
+        ctx: Context<'_, '_, '_, 'info, DrawWinner<'info>>,
+        pool_id: u64,
+    ) -> Result<()> {
+        handlers::draw_winner(ctx, pool_id)
     }
 }
