@@ -142,93 +142,7 @@ describe("fortunex", () => {
     console.log("Lottery pool created:", pool);
   });
 
-  // it("Should buy a ticket", async () => {
-  //   const user = Keypair.generate();
-  //   const poolId = 0;
-
-  //   // Airdrop SOL to user
-  //   await provider.connection.requestAirdrop(
-  //     user.publicKey,
-  //     2 * anchor.web3.LAMPORTS_PER_SOL
-  //   );
-  //   await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  //   // Create user token account and mint USDC
-  //   const userTokenAccount = await createAccount(
-  //     provider.connection,
-  //     user,
-  //     usdcMint,
-  //     user.publicKey
-  //   );
-
-  //   // Mint 20 USDC to user (enough for 2 tickets)
-  //   await mintTo(
-  //     provider.connection,
-  //     authority,
-  //     usdcMint,
-  //     userTokenAccount,
-  //     authority.publicKey,
-  //     20_000_000 // 20 USDC with 6 decimals
-  //   );
-
-  //   // Find PDAs
-  //   const [globalStatePda] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from(GLOBAL_STATE_SEED)],
-  //     program.programId
-  //   );
-
-  //   const [lotteryPoolPda] = PublicKey.findProgramAddressSync(
-  //     [
-  //       Buffer.from(LOTTERY_POOL_SEED),
-  //       new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
-  //     ],
-  //     program.programId
-  //   );
-
-  //   const [userTicketPda] = PublicKey.findProgramAddressSync(
-  //     [
-  //       Buffer.from(USER_TICKET_SEED),
-  //       user.publicKey.toBuffer(),
-  //       new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
-  //     ],
-  //     program.programId
-  //   );
-
-  //   const [poolTokenAccount] = PublicKey.findProgramAddressSync(
-  //     [
-  //       Buffer.from(VAULT_AUTHORITY_SEED),
-  //       new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
-  //     ],
-  //     program.programId
-  //   );
-
-  //   // Buy ticket
-  //   const tx = await program.methods
-  //     .buyTicket(new anchor.BN(poolId))
-  //     .accounts({
-  //       globalState: globalStatePda,
-  //       lotteryPool: lotteryPoolPda,
-  //       userTicket: userTicketPda,
-  //       userTokenAccount: userTokenAccount,
-  //       poolTokenAccount: poolTokenAccount,
-  //       user: user.publicKey,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //       systemProgram: SystemProgram.programId,
-  //     })
-  //     .signers([user])
-  //     .rpc();
-
-  //   console.log("Buy ticket transaction signature:", tx);
-
-  //   // Verify ticket purchase
-  //   const userTicket = await program.account.userTicket.fetch(userTicketPda);
-  //   const pool = await program.account.lotteryPool.fetch(lotteryPoolPda);
-
-  //   console.log("User ticket:", userTicket);
-  //   console.log("Pool after ticket purchase:", pool);
-  // });
-
-  it("Should draw winner from 3 participants and show balances", async () => {
+  it("Should draw winner from 4 participants and show balances", async () => {
     const poolId = 0;
     const crank = Keypair.generate();
     const participants: Keypair[] = [];
@@ -279,7 +193,7 @@ describe("fortunex", () => {
       program.programId
     );
 
-    // === 🧾 Step 1: 3 participants join and buy ticket ===
+    // === 🧾 Step 1: 4 participants join and buy ticket ===
     for (let i = 0; i < 4; i++) {
       const user = Keypair.generate();
       participants.push(user);
