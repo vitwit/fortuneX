@@ -38,8 +38,7 @@ export default function UserTicketsComponent() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [userTickets, setUserTickets] = useState<ParsedUserTicket[]>([]);
-  const [totalTickets, setTotalTickets] = useState<number>(0);
-  const [totalSpent, setTotalSpent] = useState<number>(0);
+  const [expandedPools, setExpandedPools] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!selectedAccount?.publicKey) return;
@@ -101,8 +100,6 @@ export default function UserTicketsComponent() {
         });
 
         setUserTickets(parsed);
-        setTotalTickets(totalTicketCount);
-        setTotalSpent(totalAmountSpent);
       } catch (err) {
         console.error('Failed to fetch user tickets:', err);
         Alert.alert('Error', 'Failed to fetch user tickets');
@@ -131,34 +128,64 @@ export default function UserTicketsComponent() {
     return (Number(amount) / 1e6).toFixed(2);
   };
 
-  const renderTicketsByPool = () => {
-    return userTickets.map((userTicket, poolIndex) => (
-      <View key={poolIndex} style={styles.poolSection}>
-        <View style={styles.poolHeader}>
-          <Text style={styles.poolTitle}>
-            🎯 Pool #{userTicket.poolId.toString()}
-          </Text>
-          <Text style={styles.poolAddress}>{userTicket.pool.toBase58()}</Text>
-        </View>
+  const toggleExpand = (poolKey: string) => {
+    setExpandedPools(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(poolKey)) {
+        newSet.delete(poolKey);
+      } else {
+        newSet.add(poolKey);
+      }
+      return newSet;
+    });
+  };
 
-        {userTicket.tickets.map((ticket, ticketIndex) => (
-          <RaffleTicket
-            key={`${poolIndex}-${ticketIndex}`}
-            ticketNumber={ticket.ticket_number.toString()}
-            amountPaid={formatAmount(ticket.amount_paid)}
-            timestamp={ticket.timestamp.toString()}
-            poolId={userTicket.poolId.toString()}
-            contestName="FortuneX"
-            onPress={() =>
-              handleTicketPress(
-                ticket.ticket_number.toString(),
-                userTicket.poolId.toString(),
-              )
-            }
-          />
-        ))}
-      </View>
-    ));
+  const renderTicketsByPool = () => {
+    return userTickets.map((userTicket, poolIndex) => {
+      const poolKey = userTicket.pool.toBase58() + userTicket.poolId.toString();
+      const isExpanded = expandedPools.has(poolKey);
+      const ticketList = isExpanded
+        ? userTicket.tickets
+        : userTicket.tickets.slice(0, 1);
+
+      return (
+        <View key={poolIndex} style={styles.poolSection}>
+          <View style={styles.poolHeader}>
+            <Text style={styles.poolTitle}>
+              🎯 Pool #{userTicket.poolId.toString()}
+            </Text>
+            <Text style={styles.poolAddress}>{userTicket.pool.toBase58()}</Text>
+          </View>
+
+          {ticketList.map((ticket, ticketIndex) => (
+            <RaffleTicket
+              key={`${poolIndex}-${ticketIndex}`}
+              ticketNumber={ticket.ticket_number.toString()}
+              amountPaid={formatAmount(ticket.amount_paid)}
+              timestamp={ticket.timestamp.toString()}
+              poolId={userTicket.poolId.toString()}
+              contestName="FortuneX"
+              onPress={() =>
+                handleTicketPress(
+                  ticket.ticket_number.toString(),
+                  userTicket.poolId.toString(),
+                )
+              }
+            />
+          ))}
+
+          {userTicket.tickets.length > 1 && (
+            <Text
+              style={styles.viewMoreText}
+              onPress={() => toggleExpand(poolKey)}>
+              {isExpanded
+                ? 'View Less'
+                : `View More (${userTicket.tickets.length - 1} tickets)`}
+            </Text>
+          )}
+        </View>
+      );
+    });
   };
 
   if (!selectedAccount) {
@@ -317,5 +344,12 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     textAlign: 'center',
+  },
+  viewMoreText: {
+    color: '#e5c384',
+    fontSize: 14,
+    marginLeft: 16,
+    marginTop: 8,
+    fontWeight: '500',
   },
 });
