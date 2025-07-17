@@ -43,10 +43,10 @@ android/.cxx/
 android/local.properties
 android/app/build/
 android/build/
-android/gradle.properties
-android/gradlew
-android/gradlew.bat
-android/gradle/
+# android/gradle.properties
+# android/gradlew
+# android/gradlew.bat
+# android/gradle/
 android/**/*.iml
 android/.settings/
 
