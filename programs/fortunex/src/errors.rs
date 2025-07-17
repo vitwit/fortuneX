@@ -58,4 +58,7 @@ pub enum FortuneXError {
 
     #[msg("Invalid number of remaining accounts")]
     InvalidRemainingAccountsCount,
+
+    #[msg("Invalid ticket quantity")]
+    InvalidTicketQuantity,
 }

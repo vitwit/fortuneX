@@ -239,13 +239,18 @@ describe("fortunex", () => {
           Buffer.from(USER_TICKET_SEED),
           user.publicKey.toBuffer(),
           new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
-          ticketNumber.toArrayLike(Buffer, "le", 8),
         ],
         program.programId
       );
 
+      let quantity = 1;
+      // making the user1 to buy one more ticket
+      if (i == 0) {
+        quantity = 2;
+      }
+
       let tx = await program.methods
-        .buyTicket(new anchor.BN(poolId))
+        .buyTicket(new anchor.BN(poolId), new anchor.BN(quantity))
         .accounts({
           globalState: globalStatePda,
           lotteryPool: lotteryPoolPda,
@@ -259,40 +264,7 @@ describe("fortunex", () => {
         .signers([user])
         .rpc();
 
-      console.log(`✅ Participant ${i + 1} bought ticket: ${tx}`);
-
-      // making the user1 to buy one more ticket
-      if (i === 0) {
-        // Second ticket
-        pool = await program.account.lotteryPool.fetch(lotteryPoolPda);
-        ticketNumber = new anchor.BN(pool.ticketsSold);
-        [userTicketPda] = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from(USER_TICKET_SEED),
-            user.publicKey.toBuffer(),
-            new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
-            ticketNumber.toArrayLike(Buffer, "le", 8),
-          ],
-          program.programId
-        );
-
-        tx = await program.methods
-          .buyTicket(new anchor.BN(poolId))
-          .accounts({
-            globalState: globalStatePda,
-            lotteryPool: lotteryPoolPda,
-            userTicket: userTicketPda,
-            userTokenAccount: userTokenAccount,
-            poolTokenAccount: poolTokenAccount,
-            user: user.publicKey,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
-          })
-          .signers([user])
-          .rpc();
-
-        console.log(`✅ Participant ${i + 1} bought second ticket: ${tx}`);
-      }
+      console.log(`✅ Participant ${i + 1} bought ${quantity} tickets: ${tx}`);
 
       console.log(
         "           -----************************************-----          \n\n"

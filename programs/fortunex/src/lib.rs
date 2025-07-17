@@ -13,7 +13,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu");
+declare_id!("HZVuaH9kwqbcaDbntydUn9gjus9dT1LuCvXgGK2e3b21");
 
 #[program]
 pub mod fortunex {
@@ -39,8 +39,8 @@ pub mod fortunex {
     }
 
     // Buy a ticket for the lottery
-    pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64) -> Result<()> {
-        handlers::buy_ticket(ctx, pool_id)
+    pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Result<()> {
+        handlers::buy_ticket(ctx, pool_id,quantity)
     }
 
     // Draw the winner
