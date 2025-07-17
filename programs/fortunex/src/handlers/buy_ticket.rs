@@ -21,13 +21,13 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Resul
         FortuneXError::PoolNotActive
     );
 
-    // Check if pool has reached maximum participants
+    // Check if pool has reached maximum tickets
     require!(
-        lottery_pool.participants.len() as u64 + quantity <= LotteryPool::MAX_PARTICIPANTS as u64,
+        lottery_pool.tickets_sold.len() as u64 + quantity <= lottery_pool.max_tickets,
         FortuneXError::PoolFull
     );
 
-    let tickets_price = LotteryPool::TICKET_PRICE * quantity;
+    let tickets_price = lottery_pool.ticket_price * quantity;
 
     // Validate ticket price matches expected amount
     require!(
@@ -52,8 +52,8 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Resul
     // update user ticket details
     for _i in 0..quantity {
         let new_ticket = TicketDetails {
-            ticket_number: lottery_pool.tickets_sold,
-            amount_paid: LotteryPool::TICKET_PRICE,
+            ticket_number: lottery_pool.tickets_sold.len() as u64,
+            amount_paid: lottery_pool.ticket_price,
             timestamp: clock.unix_timestamp,
         };
         msg!(
@@ -61,15 +61,14 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Resul
             user.key(),
             new_ticket.ticket_number,
             pool_id,
-            LotteryPool::TICKET_PRICE
+            lottery_pool.ticket_price
         );
 
         user_ticket.tickets.push(new_ticket);
 
         // Update lottery pool state
-        lottery_pool.participants.push(user.key());
-        lottery_pool.tickets_sold += 1;
-        lottery_pool.prize_pool += LotteryPool::TICKET_PRICE;
+        lottery_pool.tickets_sold.push(user.key());
+        lottery_pool.prize_pool += lottery_pool.ticket_price;
     }
 
     user_ticket.user = user.key();
@@ -78,11 +77,8 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Resul
     user_ticket.bump = ctx.bumps.user_ticket;
 
     // Check if pool is now full and ready for draw
-    if lottery_pool.participants.len() == LotteryPool::MAX_PARTICIPANTS {
-        lottery_pool.status = PoolStatus::ReadyForDraw;
-
-        // Set draw time (could be immediate or after a delay)
-        lottery_pool.draw_time = clock.unix_timestamp + lottery_pool.draw_interval;
+    if lottery_pool.tickets_sold.len() as u64 == lottery_pool.max_tickets {
+        lottery_pool.status = PoolStatus::PoolFull;
     }
 
     Ok(())

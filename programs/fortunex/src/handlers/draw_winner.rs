@@ -16,26 +16,29 @@ pub fn draw_winner<'info>(
 
     // Validate pool is ready for draw
     require!(
-        lottery_pool.status == PoolStatus::ReadyForDraw,
-        FortuneXError::PoolNotReadyForDraw
+        lottery_pool.status != PoolStatus::Completed,
+        FortuneXError::PoolDrawCompleted
     );
 
-    // Check if pool is full (should have 10 participants)
-    require!(
-        lottery_pool.participants.len() == LotteryPool::MAX_PARTICIPANTS,
-        FortuneXError::PoolNotFull
-    );
-
-    // TODO
     // Check if draw time has arrived
-    // require!(
-    //     clock.unix_timestamp >= lottery_pool.draw_time,
-    //     FortuneXError::DrawTimeNotReached
-    // );
+    require!(
+        clock.unix_timestamp >= lottery_pool.draw_time,
+        FortuneXError::DrawTimeNotReached
+    );
+
+    // Check if pool has minimum number of tickets sold
+    // if not, increase draw time
+    if (lottery_pool.tickets_sold.len() as u64) < lottery_pool.min_tickets {
+        lottery_pool.draw_time = clock.unix_timestamp + lottery_pool.draw_interval;
+
+        msg!("Updated draw time of pool {}", pool_id);
+
+        return Ok(()); // return early
+    }
 
     // Validate that remaining accounts match participants
     require!(
-        ctx.remaining_accounts.len() == lottery_pool.participants.len(),
+        ctx.remaining_accounts.len() == lottery_pool.tickets_sold.len(),
         FortuneXError::InvalidRemainingAccountsCount
     );
 
@@ -66,9 +69,9 @@ pub fn draw_winner<'info>(
         random_seed[6],
         random_seed[7],
     ]);
-    let winning_ticket = (random_value % lottery_pool.participants.len() as u64) + 1;
-    let winner_index = (winning_ticket - 1) as usize;
-    let winner = lottery_pool.participants[winner_index];
+    let winning_ticket = random_value % lottery_pool.tickets_sold.len() as u64;
+    let winner_index = winning_ticket as usize;
+    let winner = lottery_pool.tickets_sold[winner_index];
 
     let accounts: Vec<_> = ctx.remaining_accounts.iter().collect();
 
@@ -147,8 +150,7 @@ pub fn draw_winner<'info>(
     draw_history.pool_id = pool_id;
     draw_history.winner = winner;
     draw_history.prize_amount = winner_prize;
-    draw_history.total_participants = lottery_pool.participants.len() as u64;
-    draw_history.total_tickets = lottery_pool.tickets_sold;
+    draw_history.total_tickets = lottery_pool.tickets_sold.len() as u64;
     draw_history.draw_timestamp = clock.unix_timestamp;
     draw_history.winning_ticket = winning_ticket;
     draw_history.random_seed = random_seed;
