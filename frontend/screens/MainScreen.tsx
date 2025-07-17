@@ -122,7 +122,7 @@ export default function MainScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.poolsScroll}>
-              <LotteryPoolsComponent />
+              <LotteryPoolsComponent isMainScreen={true} />
             </ScrollView>
           </View>
 

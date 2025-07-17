@@ -29,6 +29,7 @@ import {Transaction} from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import {sha256} from '@noble/hashes/sha256';
 import {USDC_MINT_ADDRESS} from '../util/constants';
+import PoolInfoComponent from './PoolInfoComponent';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -69,9 +70,11 @@ const USDC_MINT = new PublicKey(USDC_MINT_ADDRESS);
 export default function LotteryPoolsComponent({
   horizontalView = true,
   showActive = true,
+  isMainScreen = false,
 }: {
   horizontalView?: boolean;
   showActive?: boolean;
+  isMainScreen?: boolean;
 }): JSX.Element {
   const {connection} = useConnection();
   const [pools, setPools] = useState<LotteryPoolData[]>([]);
@@ -83,6 +86,9 @@ export default function LotteryPoolsComponent({
   const [ticketCount, setTicketCount] = useState<string>('1');
   const {selectedAccount, authorizeSession} = useAuthorization();
   const [signingInProgress, setSigningInProgress] = useState(false);
+  const [showPoolInfo, setShowPoolInfo] = useState(false);
+  const [currentPoolInfo, setCurrentPoolInfo] =
+    useState<LotteryPoolData | null>(null);
 
   const [pulseAnim] = useState(new Animated.Value(1.2));
 
@@ -578,7 +584,7 @@ export default function LotteryPoolsComponent({
     const poolType = getPoolType(item.prizePool);
 
     if (!isActive && showActive) {
-      return <>{renderEmptyComponent()}</>;
+      return null;
     }
 
     return (
@@ -660,6 +666,13 @@ export default function LotteryPoolsComponent({
             <Text style={styles.buyButtonText}>Buy Tickets</Text>
           </TouchableOpacity>
         )}
+        {!isMainScreen ? (
+          <TouchableOpacity
+            style={styles.viewMoreButton}
+            onPress={() => setCurrentPoolInfo(item)}>
+            <Text style={styles.buyButtonText}>View More</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   };
@@ -784,6 +797,15 @@ export default function LotteryPoolsComponent({
     return () => clearInterval(interval);
   }, []);
 
+  if (currentPoolInfo) {
+    return (
+      <PoolInfoComponent
+        poolData={currentPoolInfo}
+        onClose={() => setCurrentPoolInfo(null)}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Pools List */}
@@ -795,6 +817,11 @@ export default function LotteryPoolsComponent({
           ? renderEmptyComponent()
           : pools.map(item => renderPoolItem({item}))}
       </ScrollView>
+
+      {pools.length === 0 ||
+      pools.filter(pool => pool.status === PoolStatus.Active).length === 0
+        ? renderEmptyComponent()
+        : null}
 
       {/* Buy Ticket Modal */}
       {renderBuyTicketModal()}
@@ -921,6 +948,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  viewMoreButton: {
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8
   },
   emptyContainer: {
     alignItems: 'center',
