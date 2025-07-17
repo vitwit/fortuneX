@@ -1,12 +1,12 @@
 use crate::{
-    GlobalState, LotteryPool, UserTicket, GLOBAL_STATE_SEED, LOTTERY_POOL_SEED, USER_TICKET_SEED,
-    VAULT_AUTHORITY_SEED,
+    GlobalState, LotteryPool, TicketDetails, UserTicket, GLOBAL_STATE_SEED, LOTTERY_POOL_SEED,
+    USER_TICKET_SEED, VAULT_AUTHORITY_SEED,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
 #[derive(Accounts)]
-#[instruction(pool_id: u64)]
+#[instruction(pool_id: u64, quantity: u64)]
 pub struct BuyTicket<'info> {
     #[account(
         seeds = [GLOBAL_STATE_SEED],
@@ -22,14 +22,13 @@ pub struct BuyTicket<'info> {
     pub lottery_pool: Account<'info, LotteryPool>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = user,
-        space = 8 + UserTicket::INIT_SPACE,
+        space = 8 + UserTicket::INIT_SPACE + (TicketDetails::INIT_SPACE*100),
         seeds = [
             USER_TICKET_SEED,
             user.key().as_ref(),
             &pool_id.to_le_bytes(),
-            &lottery_pool.tickets_sold.to_le_bytes()
         ],
         bump
     )]

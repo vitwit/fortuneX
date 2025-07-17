@@ -39,8 +39,8 @@ pub mod fortunex {
     }
 
     // Buy a ticket for the lottery
-    pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64) -> Result<()> {
-        handlers::buy_ticket(ctx, pool_id)
+    pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Result<()> {
+        handlers::buy_ticket(ctx, pool_id,quantity)
     }
 
     // Draw the winner

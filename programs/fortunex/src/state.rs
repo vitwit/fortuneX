@@ -75,17 +75,23 @@ impl LotteryPool {
 #[account]
 #[derive(InitSpace)]
 pub struct UserTicket {
-    pub user: Pubkey,       // Ticket owner
-    pub pool: Pubkey,       // Pool this ticket belongs to
-    pub pool_id: u64,       // Pool ID for easier querying
-    pub ticket_number: u64, // Single ticket number (1-10)
-    pub amount_paid: u64,   // USDC paid ($10)
-    pub timestamp: i64,     // When ticket was bought
+    pub user: Pubkey, // Ticket owner
+    pub pool: Pubkey, // Pool this ticket belongs to
+    pub pool_id: u64, // Pool ID for easier querying
+    #[max_len(100)]
+    pub tickets: Vec<TicketDetails>, // Tickets bought by user
     pub bump: u8,
 }
 
 impl UserTicket {
     pub const MAX_TICKETS_PER_USER: usize = 1; // One ticket per user per pool
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct TicketDetails {
+    pub ticket_number: u64, // Single ticket number (1-10)
+    pub amount_paid: u64,   // USDC paid ($10)
+    pub timestamp: i64,     // When ticket was bought
 }
 
 // Pool's token account to hold USDC
