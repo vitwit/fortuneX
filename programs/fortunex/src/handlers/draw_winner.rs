@@ -1,7 +1,6 @@
 use crate::enums::PoolStatus;
 use crate::instructions::DrawWinner;
 use crate::FortuneXError;
-use crate::LotteryPool;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 
@@ -96,13 +95,21 @@ pub fn draw_winner<'info>(
     );
 
     // Calculate prize distribution
+    // Reduce related fees
     let total_prize = lottery_pool.prize_pool;
     // Calculate platform fee from prize pool using basis points (bps)
     // bps = 100 bps means 1% platform fee, 1000 bps means 10%, 10,000 bps means 100%
     // Example: if platform_fee_bps = 100 (1%), and total_prize = 100_000_000 (100 USDC),
     // platform_fee = (100_000_000 * 100) / 10000 = 10_000_000 (10 USDC)
     let platform_fee = (total_prize * global_state.platform_fee_bps as u64) / 10000;
-    let winner_prize = total_prize - platform_fee;
+    let mut winner_prize = total_prize - platform_fee;
+    // deduct bonus pool fee
+    let bonus_pool_fee = (total_prize * global_state.bonus_pool_fee_bps as u64) / 10000;
+    winner_prize -= bonus_pool_fee;
+
+    // deduct pool creator fee
+    let commission = (total_prize * lottery_pool.commission_bps as u64) / 10000;
+    winner_prize -= commission;
 
     // Create vault authority signer seeds
     let vault_authority_seeds = &[
@@ -142,8 +149,39 @@ pub fn draw_winner<'info>(
 
     token::transfer(platform_cpi_ctx, platform_fee)?;
 
-    // Update lottery pool status
+    // Transfer bonus pool fee
+    let transfer_to_bonus_pool = Transfer {
+        from: ctx.accounts.pool_token_account.to_account_info(),
+        to: ctx.accounts.bonus_pool_token_account.to_account_info(),
+        authority: ctx.accounts.vault_authority.to_account_info(),
+    };
+
+    let bonus_cpi_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        transfer_to_bonus_pool,
+        vault_signer,
+    );
+
+    token::transfer(bonus_cpi_ctx, bonus_pool_fee)?;
+
+    // Transfer commission to pool creator
+    let transfer_to_creator = Transfer {
+        from: ctx.accounts.pool_token_account.to_account_info(),
+        to: ctx.accounts.creator_token_account.to_account_info(),
+        authority: ctx.accounts.vault_authority.to_account_info(),
+    };
+
+    let commission_cpi_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        transfer_to_creator,
+        vault_signer,
+    );
+
+    token::transfer(commission_cpi_ctx, commission)?;
+
+    // Update lottery pool status and winner details
     lottery_pool.status = PoolStatus::Completed;
+    lottery_pool.winner = winner;
 
     // Record draw history
     draw_history.pool = lottery_pool.key();

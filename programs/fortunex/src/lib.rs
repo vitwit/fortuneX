@@ -24,8 +24,15 @@ pub mod fortunex {
         platform_wallet: Pubkey,
         usdc_mint: Pubkey,
         platform_fee_bps: u16,
+        bonus_pool_fee_bps: u16,
     ) -> Result<()> {
-        handlers::initialize(ctx, platform_wallet, usdc_mint, platform_fee_bps)
+        handlers::initialize(
+            ctx,
+            platform_wallet,
+            usdc_mint,
+            platform_fee_bps,
+            bonus_pool_fee_bps,
+        )
     }
 
     // Initialize a new lottery pool

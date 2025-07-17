@@ -40,6 +40,13 @@ pub struct InitializePool<'info> {
     )]
     pub vault_authority: UncheckedAccount<'info>, // this account will be the singer for transferring tokens from the pool to user
 
+    #[account(
+        mut,
+        token::mint = global_state.usdc_mint,
+        token::authority = authority
+    )]
+    pub creator_token_account: Account<'info, TokenAccount>,
+
     #[account(address = global_state.usdc_mint)]
     pub usdc_mint: Account<'info, Mint>,
 

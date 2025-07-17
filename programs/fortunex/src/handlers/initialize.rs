@@ -6,6 +6,7 @@ pub fn initialize(
     platform_wallet: Pubkey,
     usdc_mint: Pubkey,
     platform_fee_bps: u16,
+    bonus_pool_fee_bps: u16,
 ) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
 
@@ -15,11 +16,18 @@ pub fn initialize(
         crate::FortuneXError::InvalidPlatformFee
     );
 
+    // Validate bonus pool fee is reasonable (max 10% = 1000 bps)
+    require!(
+        bonus_pool_fee_bps <= 1000,
+        crate::FortuneXError::InvalidBonusPoolFee
+    );
+
     // Initialize global state
     global_state.authority = ctx.accounts.authority.key();
     global_state.platform_wallet = platform_wallet;
     global_state.usdc_mint = usdc_mint;
     global_state.platform_fee_bps = platform_fee_bps;
+    global_state.bonus_pool_fee_bps = bonus_pool_fee_bps;
     global_state.pools_count = 0;
     global_state.creators_whitelist = vec![ctx.accounts.authority.key()];
     global_state.bump = ctx.bumps.global_state;
