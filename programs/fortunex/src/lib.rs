@@ -13,7 +13,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("HZVuaH9kwqbcaDbntydUn9gjus9dT1LuCvXgGK2e3b21");
+declare_id!("HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu");
 
 #[program]
 pub mod fortunex {
@@ -33,13 +33,21 @@ pub mod fortunex {
         handlers::initialize_pool(ctx, draw_interval)
     }
 
+    // Update creators whitelist
+    pub fn update_whitelist(ctx: Context<UpdateWhitelist>, is_add: bool) -> Result<()> {
+        handlers::update_whitelist(ctx, is_add)
+    }
+
     // Buy a ticket for the lottery
-    pub fn buy_ticket(ctx: Context<BuyTicket>) -> Result<()> {
-        handlers::buy_ticket(ctx)
+    pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64) -> Result<()> {
+        handlers::buy_ticket(ctx, pool_id)
     }
 
     // Draw the winner
-    pub fn draw_winner(ctx: Context<DrawWinner>) -> Result<()> {
-        handlers::draw_winner(ctx)
+    pub fn draw_winner<'info>(
+        ctx: Context<'_, '_, '_, 'info, DrawWinner<'info>>,
+        pool_id: u64,
+    ) -> Result<()> {
+        handlers::draw_winner(ctx, pool_id)
     }
 }

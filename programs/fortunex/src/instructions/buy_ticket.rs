@@ -25,7 +25,12 @@ pub struct BuyTicket<'info> {
         init,
         payer = user,
         space = 8 + UserTicket::INIT_SPACE,
-        seeds = [USER_TICKET_SEED, user.key().as_ref(), &pool_id.to_le_bytes()],
+        seeds = [
+            USER_TICKET_SEED,
+            user.key().as_ref(),
+            &pool_id.to_le_bytes(),
+            &lottery_pool.tickets_sold.to_le_bytes()
+        ],
         bump
     )]
     pub user_ticket: Account<'info, UserTicket>,

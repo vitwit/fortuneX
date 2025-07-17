@@ -38,4 +38,24 @@ pub enum FortuneXError {
     CreatorNotWhitelisted,
     #[msg("Only whitelisted creators can create pools")]
     CreatorNotAllowed,
+    #[msg("Arithmetic overflow occurred")]
+    Overflow,
+    #[msg("Already participating")]
+    UserAlreadyParticipating,
+    #[msg("Pool not ready for draw")]
+    PoolNotReadyForDraw,
+    #[msg("Pool not full")]
+    PoolNotFull,
+    #[msg("Winner token account not found")]
+    WinnerTokenAccountNotFound,
+    #[msg("Invalid remaining accounts")]
+    InvalidRemainingAccounts,
+    #[msg("Invalid token account")]
+    InvalidTokenAccount,
+
+    #[msg("Invalid winner token account")]
+    InvalidWinnerTokenAccount,
+
+    #[msg("Invalid number of remaining accounts")]
+    InvalidRemainingAccountsCount,
 }

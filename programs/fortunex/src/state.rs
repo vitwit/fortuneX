@@ -1,4 +1,5 @@
 use crate::enums::PoolStatus;
+use crate::FortuneXError;
 use anchor_lang::prelude::*;
 
 // Global program state
@@ -27,11 +28,11 @@ impl GlobalState {
     pub fn add_creator(&mut self, creator: Pubkey) -> Result<()> {
         require!(
             !self.creators_whitelist.contains(&creator),
-            ErrorCode::CreatorAlreadyWhitelisted
+            FortuneXError::CreatorAlreadyWhitelisted
         );
         require!(
             self.creators_whitelist.len() < Self::MAX_CREATORS,
-            ErrorCode::WhitelistFull
+            FortuneXError::WhitelistFull
         );
         self.creators_whitelist.push(creator);
         Ok(())
@@ -43,7 +44,7 @@ impl GlobalState {
             self.creators_whitelist.remove(pos);
             Ok(())
         } else {
-            Err(ErrorCode::CreatorNotWhitelisted.into())
+            Err(FortuneXError::CreatorNotWhitelisted.into())
         }
     }
 }
@@ -65,9 +66,9 @@ pub struct LotteryPool {
 }
 
 impl LotteryPool {
-    pub const MAX_PARTICIPANTS: usize = 10; // Exactly 10 participants per round
+    pub const MAX_PARTICIPANTS: usize = 5; // Exactly 10 participants per round
     pub const TICKET_PRICE: u64 = 10_000_000; // $10 USDC (6 decimals)
-    pub const MAX_PRIZE_POOL: u64 = 100_000_000; // $100 USDC (6 decimals)
+    pub const MAX_PRIZE_POOL: u64 = 10_000_000; // $100 USDC (6 decimals)
 }
 
 // User's ticket entry for the pool
@@ -111,17 +112,4 @@ pub struct DrawHistory {
     pub winning_ticket: u64,     // Winning ticket number
     pub random_seed: [u8; 32],   // Random seed used
     pub bump: u8,
-}
-
-// Error codes for whitelist operations
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Creator is already whitelisted")]
-    CreatorAlreadyWhitelisted,
-    #[msg("Whitelist is full")]
-    WhitelistFull,
-    #[msg("Creator is not whitelisted")]
-    CreatorNotWhitelisted,
-    #[msg("Only whitelisted creators can create pools")]
-    CreatorNotAllowed,
 }
