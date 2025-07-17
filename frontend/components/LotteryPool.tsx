@@ -16,9 +16,18 @@ import {
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {useConnection} from './providers/ConnectionProvider';
 import {alertAndLog} from '../util/alertAndLog';
-import {PublicKey} from '@solana/web3.js';
+import {PublicKey, SystemProgram} from '@solana/web3.js';
 import {Buffer} from 'buffer';
 import ConnectButton from './ConnectButton';
+import {getAssociatedTokenAddress, TOKEN_PROGRAM_ID} from '@solana/spl-token';
+import {
+  Web3MobileWallet,
+  transact,
+} from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import {TransactionInstruction} from '@solana/web3.js';
+import {Transaction} from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
+import {sha256} from '@noble/hashes/sha256';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -52,6 +61,13 @@ interface GlobalStateData {
   bump: number;
 }
 
+// const GLOBAL_STATE_SEED = 'global_state';
+// const LOTTERY_POOL_SEED = 'lottery_pool';
+// const VAULT_AUTHORITY_SEED = 'vault_authority';
+// const USER_TICKET_SEED = 'user_ticket';
+
+const USDC_MINT = new PublicKey('3FToTvATtWvmufYiJUPPk9SBUVqZnZaMfkRkD3ZimKy1');
+
 export default function LotteryPoolsComponent(): JSX.Element {
   const {connection} = useConnection();
   const [pools, setPools] = useState<LotteryPoolData[]>([]);
@@ -61,7 +77,8 @@ export default function LotteryPoolsComponent(): JSX.Element {
     null,
   );
   const [ticketCount, setTicketCount] = useState<string>('1');
-  const {selectedAccount} = useAuthorization();
+  const {selectedAccount, authorizeSession} = useAuthorization();
+  const [signingInProgress, setSigningInProgress] = useState(false);
 
   const [pulseAnim] = useState(new Animated.Value(1.2));
 
@@ -74,6 +91,7 @@ export default function LotteryPoolsComponent(): JSX.Element {
   const GLOBAL_STATE_SEED = Buffer.from('global_state');
   const LOTTERY_POOL_SEED = Buffer.from('lottery_pool');
   const VAULT_AUTHORITY_SEED = Buffer.from('vault_authority');
+  const USER_TICKET_SEED = Buffer.from('user_ticket');
 
   // TODO: make this dynamic
   const TICKET_PRICE: number = 10_000_000; // $10 USDC (6 decimals)
@@ -350,43 +368,172 @@ export default function LotteryPoolsComponent(): JSX.Element {
     setTicketCount(numericValue);
   };
 
+  const createBuyTicketTransaction = useCallback(
+    async (poolId: number, quantity: number) => {
+      if (!selectedPool || !quantity || quantity <= 0) {
+        Alert.alert('Error', 'Invalid ticket quantity');
+        return;
+      }
+
+      return await transact(async (wallet: Web3MobileWallet) => {
+        const [authorizationResult, latestBlockhash] = await Promise.all([
+          authorizeSession(wallet),
+          connection.getLatestBlockhash(),
+        ]);
+
+        const userPubkey = authorizationResult.publicKey;
+
+        // Find PDAs
+        const [globalStatePda] = PublicKey.findProgramAddressSync(
+          [GLOBAL_STATE_SEED],
+          PROGRAM_ID,
+        );
+
+        const [lotteryPoolPda] = PublicKey.findProgramAddressSync(
+          [
+            LOTTERY_POOL_SEED,
+            new anchor.BN(poolId).toArrayLike(Buffer, 'le', 8),
+          ],
+          PROGRAM_ID,
+        );
+
+        const [poolTokenAccount] = PublicKey.findProgramAddressSync(
+          [
+            VAULT_AUTHORITY_SEED,
+            new anchor.BN(poolId).toArrayLike(Buffer, 'le', 8),
+          ],
+          PROGRAM_ID,
+        );
+
+        const [userTicketPda] = PublicKey.findProgramAddressSync(
+          [
+            USER_TICKET_SEED,
+            userPubkey.toBuffer(),
+            new anchor.BN(poolId).toArrayLike(Buffer, 'le', 8),
+          ],
+          PROGRAM_ID,
+        );
+
+        // Get user's USDC token account
+        const userTokenAccount = await getAssociatedTokenAddress(
+          USDC_MINT,
+          userPubkey,
+        );
+
+        // Check user's USDC balance
+        const tokenAccountInfo = await connection.getTokenAccountBalance(
+          userTokenAccount,
+        );
+        const userBalance = tokenAccountInfo.value.amount;
+        const totalCost = quantity * TICKET_PRICE;
+
+        if (parseInt(userBalance) < totalCost) {
+          throw new Error('Insufficient USDC balance for ticket purchase');
+        }
+
+        // Create instruction data
+        const discriminator = Buffer.from(
+          sha256('global:buy_ticket').slice(0, 8),
+        );
+        const poolIdBuffer = new Uint8Array(8);
+        const quantityBuffer = new Uint8Array(8);
+
+        new DataView(poolIdBuffer.buffer).setBigUint64(0, BigInt(poolId), true);
+        new DataView(quantityBuffer.buffer).setBigUint64(
+          0,
+          BigInt(quantity),
+          true,
+        );
+
+        const ixData = new Uint8Array(
+          discriminator.length + poolIdBuffer.length + quantityBuffer.length,
+        );
+        ixData.set(discriminator, 0);
+        ixData.set(poolIdBuffer, discriminator.length);
+        ixData.set(quantityBuffer, discriminator.length + poolIdBuffer.length);
+
+        // Create instruction accounts
+        const keys = [
+          {pubkey: globalStatePda, isSigner: false, isWritable: true},
+          {pubkey: lotteryPoolPda, isSigner: false, isWritable: true},
+          {pubkey: userTicketPda, isSigner: false, isWritable: true},
+          {pubkey: userTokenAccount, isSigner: false, isWritable: true},
+          {pubkey: poolTokenAccount, isSigner: false, isWritable: true},
+          {pubkey: userPubkey, isSigner: true, isWritable: false},
+          {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+        ];
+
+        const instruction = new TransactionInstruction({
+          keys,
+          programId: PROGRAM_ID,
+          data: Buffer.from(ixData),
+        });
+
+        const tx = new Transaction({
+          ...latestBlockhash,
+          feePayer: userPubkey,
+        });
+
+        tx.add(instruction);
+
+        const signedTx = await wallet.signTransactions({
+          transactions: [tx],
+        });
+
+        const txid = await connection.sendRawTransaction(
+          signedTx[0].serialize(),
+        );
+        await connection.confirmTransaction(txid, 'confirmed');
+
+        return signedTx[0];
+      });
+    },
+    [authorizeSession, connection, selectedPool],
+  );
+
   // Function to handle confirm buy
-  const handleConfirmBuy = () => {
+  const handleConfirmBuy = async () => {
     if (!selectedPool) return;
-
-    const count = parseInt(ticketCount);
-    const remainingTickets = TOTAL_TICKETS - selectedPool.ticketsSold;
-
-    if (count <= 0) {
-      Alert.alert('Error', 'Please enter a valid number of tickets');
+    if (signingInProgress) {
       return;
     }
 
-    if (count > remainingTickets) {
-      Alert.alert('Error', `Only ${remainingTickets} tickets remaining`);
+    const quantity = parseInt(ticketCount) || 0;
+    if (quantity <= 0) {
+      Alert.alert('Error', 'Please enter a valid ticket quantity');
       return;
     }
 
-    if (count > 100) {
-      Alert.alert('Error', 'Maximum 100 tickets can be purchased at once');
-      return;
+    setSigningInProgress(true);
+
+    try {
+      const signedTransaction = await createBuyTicketTransaction(
+        Number(selectedPool?.poolId),
+        quantity,
+      );
+
+      alertAndLog(
+        'Purchase Successful',
+        `Successfully bought ${quantity} ticket${
+          quantity > 1 ? 's' : ''
+        } for $${formatUSDC(quantity * TICKET_PRICE)}!`,
+      );
+
+      // Reset and close modal
+      setTicketCount('1');
+      setModalVisible(false);
+
+      // Refresh pool data here if needed
+      // await fetchPoolData();
+    } catch (err: any) {
+      alertAndLog(
+        'Purchase Failed',
+        err instanceof Error ? err.message : 'Transaction failed',
+      );
+    } finally {
+      setSigningInProgress(false);
     }
-
-    // Console log for now as requested
-    console.log('Buying tickets:', {
-      poolId: selectedPool.poolId,
-      ticketCount: count,
-      totalCost: count * TICKET_PRICE,
-      remainingTickets: remainingTickets,
-    });
-
-    // Close modal
-    setModalVisible(false);
-    setSelectedPool(null);
-    setTicketCount('1');
-
-    // TODO: Implement actual transaction logic here
-    Alert.alert('Success', `Transaction initiated for ${count} tickets!`);
   };
 
   // Function to increment ticket count

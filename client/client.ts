@@ -1,13 +1,27 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Fortunex } from "../target/types/fortunex";
-import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
+import {
+  PublicKey,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  Connection,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import {
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
+  createMint,
+  getAccount,
+  getAssociatedTokenAddress,
+  mintTo,
+} from "@solana/spl-token";
 import { readFileSync } from "fs";
 
 export class FortuneXClient {
   private program: Program<Fortunex>;
-  private provider: anchor.Provider;
+  public provider: anchor.Provider;
 
   // Seeds
   private readonly GLOBAL_STATE_SEED = "global_state";
@@ -20,239 +34,177 @@ export class FortuneXClient {
     this.provider = anchor.getProvider();
   }
 
-  /**
-   * Initialize the platform with global state
-   */
   async initializePlatform(
     authority: Keypair,
     platformWallet: PublicKey,
     usdcMint: PublicKey,
-    platformFeePercentage: number = 100 // 1% (100 basis points)
+    platformFeePercentage: number = 100
   ): Promise<string> {
-    try {
-      // Airdrop SOL to authority if needed
-      await this.provider.connection.requestAirdrop(
-        authority.publicKey,
-        2 * anchor.web3.LAMPORTS_PER_SOL
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    const [globalStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(this.GLOBAL_STATE_SEED)],
+      this.program.programId
+    );
 
-      // Find global state PDA
-      const [globalStatePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from(this.GLOBAL_STATE_SEED)],
-        this.program.programId
-      );
+    const tx = await this.program.methods
+      .initialize(platformWallet, usdcMint, platformFeePercentage)
+      .accounts({
+        globalState: globalStatePda,
+        usdcMint: usdcMint,
+        authority: authority.publicKey,
+        platformWallet: platformWallet,
+        systemProgram: SystemProgram.programId,
+      } as any)
+      .signers([authority])
+      .rpc();
 
-      // Initialize program
-      const tx = await this.program.methods
-        .initialize(platformWallet, usdcMint, platformFeePercentage)
-        .accounts({
-          globalState: globalStatePda,
-          usdcMint: usdcMint,
-          authority: authority.publicKey,
-          platformWallet: platformWallet,
-          systemProgram: SystemProgram.programId,
-        } as any)
-        .signers([authority])
-        .rpc();
+    console.log("✅ Platform initialized with transaction:", tx);
 
-      console.log("✅ Platform initialized with transaction:", tx);
+    const globalState = await this.program.account.globalState.fetch(
+      globalStatePda
+    );
+    console.log("🔍 Global state:", {
+      authority: globalState.authority.toBase58(),
+      platformWallet: globalState.platformWallet.toBase58(),
+      usdcMint: globalState.usdcMint.toBase58(),
+      platformFeeBps: globalState.platformFeeBps,
+      poolsCount: globalState.poolsCount.toString(),
+    });
 
-      // Verify initialization
-      const globalState = await this.program.account.globalState.fetch(
-        globalStatePda
-      );
-      console.log("🔍 Global state:", {
-        authority: globalState.authority.toBase58(),
-        platformWallet: globalState.platformWallet.toBase58(),
-        usdcMint: globalState.usdcMint.toBase58(),
-        platformFeeBps: globalState.platformFeeBps,
-        poolsCount: globalState.poolsCount.toString(),
-      });
-
-      return tx;
-    } catch (error) {
-      console.error("❌ Error initializing platform:", error);
-      throw error;
-    }
+    return tx;
   }
 
-  /**
-   * Create a new lottery pool
-   */
   async createLotteryPool(
     creator: Keypair,
-    drawInterval: number = 86400, // 24 hours in seconds
+    drawInterval: number = 86400,
     poolId?: number
   ): Promise<{ txSignature: string; poolPda: PublicKey; poolId: number }> {
-    try {
-      // Airdrop SOL to creator if needed
-      await this.provider.connection.requestAirdrop(
-        creator.publicKey,
-        2 * anchor.web3.LAMPORTS_PER_SOL
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    const [globalStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(this.GLOBAL_STATE_SEED)],
+      this.program.programId
+    );
 
-      // Find global state PDA
-      const [globalStatePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from(this.GLOBAL_STATE_SEED)],
-        this.program.programId
-      );
-
-      // Get current pools count if poolId not provided
-      let currentPoolId = poolId;
-      if (currentPoolId === undefined) {
-        const globalState = await this.program.account.globalState.fetch(
-          globalStatePda
-        );
-        currentPoolId = globalState.poolsCount.toNumber();
-      }
-
-      // Find pool PDAs
-      const [lotteryPoolPda] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(this.LOTTERY_POOL_SEED),
-          new anchor.BN(currentPoolId).toArrayLike(Buffer, "le", 8),
-        ],
-        this.program.programId
-      );
-
-      const [vaultAuthority] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(this.VAULT_AUTHORITY_SEED),
-          new anchor.BN(currentPoolId).toArrayLike(Buffer, "le", 8),
-        ],
-        this.program.programId
-      );
-
-      const [poolTokenAccount] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(this.VAULT_AUTHORITY_SEED),
-          new anchor.BN(currentPoolId).toArrayLike(Buffer, "le", 8),
-        ],
-        this.program.programId
-      );
-
-      // Get USDC mint from global state
+    let currentPoolId = poolId;
+    if (currentPoolId === undefined) {
       const globalState = await this.program.account.globalState.fetch(
         globalStatePda
       );
-      const usdcMint = globalState.usdcMint;
-
-      // Create lottery pool
-      const tx = await this.program.methods
-        .initializePool(new anchor.BN(drawInterval))
-        .accounts({
-          globalState: globalStatePda,
-          lotteryPool: lotteryPoolPda,
-          poolTokenAccount: poolTokenAccount,
-          vaultAuthority: vaultAuthority,
-          usdcMint: usdcMint,
-          authority: creator.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        } as any)
-        .signers([creator])
-        .rpc();
-
-      console.log("✅ Pool created with transaction:", tx);
-
-      // Verify pool creation
-      const pool = await this.program.account.lotteryPool.fetch(lotteryPoolPda);
-      console.log("🔍 Pool details:", {
-        poolId: pool.poolId.toString(),
-        // creator: pool.creator.toBase58(),
-        drawInterval: pool.drawInterval.toString(),
-        // nextDrawTime: new Date(pool.nextDrawTime.toNumber() * 1000).toISOString(),
-        ticketsSold: pool.ticketsSold.toString(),
-        // isActive: pool.isActive
-      });
-
-      return {
-        txSignature: tx,
-        poolPda: lotteryPoolPda,
-        poolId: currentPoolId,
-      };
-    } catch (error) {
-      console.error("❌ Error creating lottery pool:", error);
-      throw error;
+      currentPoolId = globalState.poolsCount.toNumber();
     }
+
+    const [lotteryPoolPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(this.LOTTERY_POOL_SEED),
+        new anchor.BN(currentPoolId).toArrayLike(Buffer, "le", 8),
+      ],
+      this.program.programId
+    );
+
+    const [vaultAuthority] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(this.VAULT_AUTHORITY_SEED),
+        new anchor.BN(currentPoolId).toArrayLike(Buffer, "le", 8),
+      ],
+      this.program.programId
+    );
+
+    const [poolTokenAccount] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(this.VAULT_AUTHORITY_SEED),
+        new anchor.BN(currentPoolId).toArrayLike(Buffer, "le", 8),
+      ],
+      this.program.programId
+    );
+
+    const globalState = await this.program.account.globalState.fetch(
+      globalStatePda
+    );
+    const usdcMint = globalState.usdcMint;
+
+    const tx = await this.program.methods
+      .initializePool(new anchor.BN(drawInterval))
+      .accounts({
+        globalState: globalStatePda,
+        lotteryPool: lotteryPoolPda,
+        poolTokenAccount,
+        vaultAuthority,
+        usdcMint,
+        authority: creator.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      } as any)
+      .signers([creator])
+      .rpc();
+
+    console.log("✅ Pool created with transaction:", tx);
+
+    const pool = await this.program.account.lotteryPool.fetch(lotteryPoolPda);
+    console.log("🔍 Pool details:", {
+      poolId: pool.poolId.toString(),
+      drawInterval: pool.drawInterval.toString(),
+      ticketsSold: pool.ticketsSold.toString(),
+    });
+
+    return {
+      txSignature: tx,
+      poolPda: lotteryPoolPda,
+      poolId: currentPoolId,
+    };
   }
 
-  /**
-   * Helper method to create USDC mint (for testing)
-   */
   async createUSDCMint(authority: Keypair): Promise<PublicKey> {
+    const usdcMint = await createMint(
+      this.provider.connection,
+      authority,
+      authority.publicKey,
+      authority.publicKey,
+      6 // USDC decimals
+    );
+    console.log("✅ USDC mint created:", usdcMint.toBase58());
+    return usdcMint;
+  }
+
+  async mintToATA(
+    mint: PublicKey,
+    destinationWallet: PublicKey,
+    amount: number,
+    authority: Keypair
+  ) {
+    const ata = await getAssociatedTokenAddress(mint, destinationWallet);
     try {
-      const usdcMint = await createMint(
-        this.provider.connection,
+      await getAccount(this.provider.connection, ata);
+    } catch {
+      const ataIx = createAssociatedTokenAccountInstruction(
+        authority.publicKey,
+        ata,
+        destinationWallet,
+        mint
+      );
+      const ataTx = new Transaction().add(ataIx);
+      await sendAndConfirmTransaction(this.provider.connection, ataTx, [
         authority,
-        authority.publicKey,
-        authority.publicKey,
-        6 // USDC decimals
-      );
-
-      console.log("✅ USDC mint created:", usdcMint.toBase58());
-      return usdcMint;
-    } catch (error) {
-      console.error("❌ Error creating USDC mint:", error);
-      throw error;
+      ]);
+      console.log("✅ ATA created for:", destinationWallet.toBase58());
     }
-  }
 
-  /**
-   * Get global state information
-   */
-  async getGlobalState() {
-    try {
-      const [globalStatePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from(this.GLOBAL_STATE_SEED)],
-        this.program.programId
-      );
-
-      const globalState = await this.program.account.globalState.fetch(
-        globalStatePda
-      );
-      return {
-        pda: globalStatePda,
-        data: globalState,
-      };
-    } catch (error) {
-      console.error("❌ Error fetching global state:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get lottery pool information
-   */
-  async getLotteryPool(poolId: number) {
-    try {
-      const [lotteryPoolPda] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(this.LOTTERY_POOL_SEED),
-          new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
-        ],
-        this.program.programId
-      );
-
-      const pool = await this.program.account.lotteryPool.fetch(lotteryPoolPda);
-      return {
-        pda: lotteryPoolPda,
-        data: pool,
-      };
-    } catch (error) {
-      console.error("❌ Error fetching lottery pool:", error);
-      throw error;
-    }
+    await mintTo(
+      this.provider.connection,
+      authority,
+      mint,
+      ata,
+      authority,
+      amount
+    );
+    console.log(`✅ Minted ${amount / 1_000_000} USDC to ${destinationWallet.toBase58()}`);
   }
 }
 
-// Usage example
+// ------------------------
+// ✅ Main usage example
+// ------------------------
+
 async function main() {
   const client = new FortuneXClient();
 
-  // Generate keypairs
   const authority = Keypair.fromSecretKey(
     Uint8Array.from(
       JSON.parse(readFileSync(`${process.env.ANCHOR_WALLET}`, "utf-8"))
@@ -262,31 +214,32 @@ async function main() {
   const platformWallet = authority;
   const creator = authority;
 
+  const phantomWalletPubkey = new PublicKey(
+    "52Egn3j4NcoShEBaFAz5PGc6rzaTGrE3BG7dUwaUZZrH"
+  );
+
   try {
-    // 1. Create USDC mint
     const usdcMint = await client.createUSDCMint(authority);
 
-     // 2. Initialize platform
-    // await client.initializePlatform(
-      // authority,
-      // platformWallet.publicKey,
-      //usdcMint,
-      //100 // 1% platform fee
-  //);
+    // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
+    await client.mintToATA(usdcMint, phantomWalletPubkey, 100_000_000, authority);
 
-    // 3. Create lottery pool
-    const poolResult = await client.createLotteryPool(
-      creator,
-      86400 // 24 hours
+    // ✅ Initialize platform
+    await client.initializePlatform(
+      authority,
+      platformWallet.publicKey,
+      usdcMint,
+      100
     );
 
+    // ✅ Create lottery pool
+    const poolResult = await client.createLotteryPool(creator, 86400);
     console.log("🎉 Setup complete!");
     console.log("Pool ID:", poolResult.poolId);
     console.log("Pool PDA:", poolResult.poolPda.toBase58());
-  } catch (error) {
-    console.error("Setup failed:", error);
+  } catch (err) {
+    console.error("❌ Setup failed:", err);
   }
 }
 
-// Uncomment to run the example
 main().catch(console.error);
