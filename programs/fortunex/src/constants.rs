@@ -5,6 +5,7 @@ pub const TICKET_PRICE: u64 = 10_000_000;     // $10 USDC per ticket (100/10)
 
 // PDA Seeds
 pub const GLOBAL_STATE_SEED: &[u8] = b"global_state";
+pub const BONUS_AUTHORITY_SEED: &[u8] = b"bonus_authority";
 pub const LOTTERY_POOL_SEED: &[u8] = b"lottery_pool";
 pub const USER_TICKET_SEED: &[u8] = b"user_ticket";
 pub const POOL_VAULT_SEED: &[u8] = b"pool_vault";

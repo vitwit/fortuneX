@@ -19,12 +19,14 @@ describe("fortunex", () => {
   const GLOBAL_STATE_SEED = "global_state";
   const LOTTERY_POOL_SEED = "lottery_pool";
   const VAULT_AUTHORITY_SEED = "vault_authority";
+  const BONUS_AUTHORITY_SEED = "bonus_authority";
   const USER_TICKET_SEED = "user_ticket";
 
   // keypairs
   const authority = Keypair.generate();
   const platformWallet = Keypair.generate();
   let usdcMint: any;
+  let creatorTokenAccount;
 
   it("Should initialize the program", async () => {
     // Airdrop SOL
@@ -51,7 +53,7 @@ describe("fortunex", () => {
 
     // Initialize program
     const tx = await program.methods
-      .initialize(platformWallet.publicKey, usdcMint, 100)
+      .initialize(platformWallet.publicKey, usdcMint, 50, 50)
       .accounts({
         globalState: globalStatePda,
         usdcMint: usdcMint,
@@ -118,6 +120,14 @@ describe("fortunex", () => {
       program.programId
     );
 
+    // creator token account
+    creatorTokenAccount = await createAccount(
+      provider.connection,
+      authority,
+      usdcMint,
+      creator.publicKey
+    );
+
     // Create lottery pool
     const drawInterval = 30; // 24 hours
     const tx = await program.methods
@@ -128,6 +138,7 @@ describe("fortunex", () => {
         poolTokenAccount: poolTokenAccount,
         vaultAuthority: vaultAuthority,
         usdcMint: usdcMint,
+        creatorTokenAccount: creatorTokenAccount,
         authority: creator.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -306,6 +317,28 @@ describe("fortunex", () => {
     }
     sleep();
 
+    const [bonusTokenAccount] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(BONUS_AUTHORITY_SEED),
+      ],
+      program.programId
+    );
+
+    let balance = await provider.connection.getTokenAccountBalance(
+      creatorTokenAccount
+    );
+    console.log(`Creator Token Account Balance before draw: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      platformTokenAccount
+    );
+    console.log(`Platform Token Account Balance before draw: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      bonusTokenAccount
+    );
+    console.log(`Bonus Pool Token Account Balance before draw: ${balance.value.uiAmount} USDC`);
+
     const drawTx = await program.methods
       .drawWinner(new anchor.BN(poolId))
       .accounts({
@@ -315,6 +348,7 @@ describe("fortunex", () => {
         poolTokenAccount: poolTokenAccount,
         vaultAuthority: vaultAuthority,
         platformTokenAccount: platformTokenAccount,
+        creatorTokenAccount: creatorTokenAccount,
         crank: crank.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -340,5 +374,20 @@ describe("fortunex", () => {
       winningTicket: drawHistory.winningTicket.toString(),
       prizeAmount: drawHistory.prizeAmount.toString(),
     });
+
+    balance = await provider.connection.getTokenAccountBalance(
+      creatorTokenAccount
+    );
+    console.log(`Creator Token Account Balance after draw: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      platformTokenAccount
+    );
+    console.log(`Platform Token Account Balance after draw: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      bonusTokenAccount
+    );
+    console.log(`Bonus Pool Token Account Balance after draw: ${balance.value.uiAmount} USDC`);
   });
 });

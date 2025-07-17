@@ -36,6 +36,8 @@ pub enum FortuneXError {
     InvalidDrawInterval,
     #[msg("Invalid platform fee")]
     InvalidPlatformFee,
+    #[msg("Invalid bonus pool fee")]
+    InvalidBonusPoolFee,
     #[msg("Creator is already whitelisted")]
     CreatorAlreadyWhitelisted,
     #[msg("Whitelist is full")]

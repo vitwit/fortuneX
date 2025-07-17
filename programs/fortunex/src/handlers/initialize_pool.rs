@@ -1,5 +1,6 @@
 use crate::enums::PoolStatus;
 use crate::instructions::InitializePool;
+use crate::LotteryPool;
 use anchor_lang::prelude::*;
 
 pub fn initialize_pool(
@@ -45,6 +46,8 @@ pub fn initialize_pool(
     lottery_pool.draw_interval = draw_interval;
     lottery_pool.draw_time = clock.unix_timestamp + draw_interval;
     lottery_pool.created_at = clock.unix_timestamp;
+    lottery_pool.creator = ctx.accounts.authority.key();
+    lottery_pool.commission_bps = LotteryPool::DEFAULT_COMMISSION_BPS;
     lottery_pool.bump = ctx.bumps.lottery_pool;
 
     // Increment global pools count

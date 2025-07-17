@@ -1,6 +1,5 @@
 use crate::{
-    DrawHistory, GlobalState, LotteryPool, DRAW_HISTORY_SEED, GLOBAL_STATE_SEED, LOTTERY_POOL_SEED,
-    VAULT_AUTHORITY_SEED,
+    DrawHistory, GlobalState, LotteryPool, BONUS_AUTHORITY_SEED, DRAW_HISTORY_SEED, GLOBAL_STATE_SEED, LOTTERY_POOL_SEED, VAULT_AUTHORITY_SEED
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
@@ -51,6 +50,21 @@ pub struct DrawWinner<'info> {
         token::authority = global_state.platform_wallet
     )]
     pub platform_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = global_state.usdc_mint,
+        seeds = [BONUS_AUTHORITY_SEED],
+        bump
+    )]
+    pub bonus_pool_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = global_state.usdc_mint,
+        token::authority = lottery_pool.creator
+    )]
+    pub creator_token_account: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub crank: Signer<'info>,

@@ -10,6 +10,7 @@ pub struct GlobalState {
     pub platform_wallet: Pubkey, // Where 1% fees go
     pub usdc_mint: Pubkey,       // USDC mint address
     pub platform_fee_bps: u16,   // Platform fee in basis points (100 bps = 1%)
+    pub bonus_pool_fee_bps: u16, // Bonus pool fee in basis points (100 bps = 1%)
     pub pools_count: u64,        // Total number of pools created
     #[max_len(100)] // Max 100 whitelisted creators
     pub creators_whitelist: Vec<Pubkey>, // Accounts allowed to create pools
@@ -49,7 +50,7 @@ impl GlobalState {
     }
 }
 
-// Individual lottery pool - fixed $100 total, 10 tickets
+// Individual lottery pool
 #[account]
 #[derive(InitSpace)]
 pub struct LotteryPool {
@@ -64,7 +65,14 @@ pub struct LotteryPool {
     pub draw_interval: i64, // Draw interval in seconds (e.g., 24 hours)
     pub draw_time: i64,     // Next draw timestamp
     pub created_at: i64,    // When pool was created
+    pub winner: Pubkey,     // Winner of the pool
+    pub commission_bps: u16, // Commission in basis points (100 bps = 1%)
+    pub creator: Pubkey,    // Creator of the pool
     pub bump: u8,
+}
+
+impl LotteryPool {
+    pub const DEFAULT_COMMISSION_BPS: u16 = 0; // set no commission for the pool
 }
 
 // User's ticket entry for the pool

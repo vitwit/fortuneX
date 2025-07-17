@@ -1,7 +1,6 @@
 use crate::enums::PoolStatus;
 use crate::instructions::BuyTicket;
 use crate::FortuneXError;
-use crate::LotteryPool;
 use crate::TicketDetails;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
