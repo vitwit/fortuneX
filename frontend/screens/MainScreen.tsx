@@ -24,6 +24,8 @@ import {useNavigation} from '../components/providers/NavigationProvider';
 import LotteryPoolInfo from '../components/LotteryPoolInfo';
 import History from '../components/History';
 import Profile from '../components/Profile';
+import RecentWinner from '../components/RecentWinner';
+import RaffleTicket from '../components/Ticket';
 
 const {width, height} = Dimensions.get('window');
 
@@ -119,44 +121,7 @@ export default function MainScreen() {
             </ScrollView>
           </View>
 
-          {/* Recent Winners */}
-          <View style={styles.winnersSection}>
-            <Text style={styles.sectionTitle}>Recent Winners</Text>
-            <View style={styles.winnersList}>
-              <View style={styles.winnerItem}>
-                <View style={styles.winnerAvatar}>
-                  <Text style={styles.winnerInitials}>JD</Text>
-                </View>
-                <View style={styles.winnerInfo}>
-                  <Text style={styles.winnerName}>John D.</Text>
-                  <Text style={styles.winnerTime}>2 hours ago</Text>
-                </View>
-                <Text style={styles.winnerAmount}>$12,500</Text>
-              </View>
-
-              <View style={styles.winnerItem}>
-                <View style={styles.winnerAvatar}>
-                  <Text style={styles.winnerInitials}>SM</Text>
-                </View>
-                <View style={styles.winnerInfo}>
-                  <Text style={styles.winnerName}>Sarah M.</Text>
-                  <Text style={styles.winnerTime}>5 hours ago</Text>
-                </View>
-                <Text style={styles.winnerAmount}>$8,750</Text>
-              </View>
-
-              <View style={styles.winnerItem}>
-                <View style={styles.winnerAvatar}>
-                  <Text style={styles.winnerInitials}>RK</Text>
-                </View>
-                <View style={styles.winnerInfo}>
-                  <Text style={styles.winnerName}>Robert K.</Text>
-                  <Text style={styles.winnerTime}>1 day ago</Text>
-                </View>
-                <Text style={styles.winnerAmount}>$25,000</Text>
-              </View>
-            </View>
-          </View>
+          <RecentWinner />
         </View>
       );
     }

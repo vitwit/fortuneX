@@ -21,6 +21,7 @@ module.exports = {
     blacklistRE: exclusionList([
       /.*\/android\/build\/.*/,
       /.*\/node_modules\/.*\/android\/build\/.*/,
+        /test-ledger\/.*/,
     ]),
   },
 };

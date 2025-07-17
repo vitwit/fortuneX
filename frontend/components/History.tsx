@@ -8,7 +8,10 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import ConnectButton from './ConnectButton';
+import RaffleTicket from './Ticket';
 
 type TicketDetails = {
   ticket_number: bigint;
@@ -35,6 +38,8 @@ export default function UserTicketsComponent() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [userTickets, setUserTickets] = useState<ParsedUserTicket[]>([]);
+  const [totalTickets, setTotalTickets] = useState<number>(0);
+  const [totalSpent, setTotalSpent] = useState<number>(0);
 
   useEffect(() => {
     if (!selectedAccount?.publicKey) return;
@@ -84,9 +89,23 @@ export default function UserTicketsComponent() {
           };
         });
 
+        // Calculate totals
+        let totalTicketCount = 0;
+        let totalAmountSpent = 0;
+
+        parsed.forEach(userTicket => {
+          totalTicketCount += userTicket.tickets.length;
+          userTicket.tickets.forEach(ticket => {
+            totalAmountSpent += Number(ticket.amount_paid) / 1e6;
+          });
+        });
+
         setUserTickets(parsed);
+        setTotalTickets(totalTicketCount);
+        setTotalSpent(totalAmountSpent);
       } catch (err) {
         console.error('Failed to fetch user tickets:', err);
+        Alert.alert('Error', 'Failed to fetch user tickets');
       } finally {
         setLoading(false);
       }
@@ -95,130 +114,208 @@ export default function UserTicketsComponent() {
     fetchUserTickets();
   }, [connection, selectedAccount]);
 
+  const handleTicketPress = (ticketNumber: string, poolId: string) => {
+    Alert.alert(
+      'Ticket Details',
+      `Ticket Number: ${ticketNumber}\nPool ID: ${poolId}`,
+      [
+        {
+          text: 'OK',
+          style: 'default',
+        },
+      ],
+    );
+  };
+
+  const formatAmount = (amount: bigint): string => {
+    return (Number(amount) / 1e6).toFixed(2);
+  };
+
+  const renderTicketsByPool = () => {
+    return userTickets.map((userTicket, poolIndex) => (
+      <View key={poolIndex} style={styles.poolSection}>
+        <View style={styles.poolHeader}>
+          <Text style={styles.poolTitle}>
+            🎯 Pool #{userTicket.poolId.toString()}
+          </Text>
+          <Text style={styles.poolAddress}>{userTicket.pool.toBase58()}</Text>
+        </View>
+
+        {userTicket.tickets.map((ticket, ticketIndex) => (
+          <RaffleTicket
+            key={`${poolIndex}-${ticketIndex}`}
+            ticketNumber={ticket.ticket_number.toString()}
+            amountPaid={formatAmount(ticket.amount_paid)}
+            timestamp={ticket.timestamp.toString()}
+            poolId={userTicket.poolId.toString()}
+            contestName="FortuneX"
+            onPress={() =>
+              handleTicketPress(
+                ticket.ticket_number.toString(),
+                userTicket.poolId.toString(),
+              )
+            }
+          />
+        ))}
+      </View>
+    ));
+  };
+
+  if (!selectedAccount) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centered}>
+          <Text style={styles.connectText}>
+            Connect your wallet to view your tickets
+          </Text>
+          <ConnectButton />
+        </View>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#00ff99" />
-        <Text style={{marginTop: 8}}>Loading tickets...</Text>
+      <View style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#e5c384" />
+          <Text style={styles.loadingText}>Loading your tickets...</Text>
+        </View>
       </View>
     );
   }
 
   if (userTickets.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text>No tickets found.</Text>
+      <View style={styles.container}>
+        <View style={styles.centered}>
+          <Text style={styles.noTicketsText}>🎟️</Text>
+          <Text style={styles.noTicketsTitle}>No tickets found</Text>
+          <Text style={styles.noTicketsSubtitle}>
+            You haven't purchased any tickets yet
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {userTickets.map((ticket, idx) => (
-        <View key={idx} style={styles.poolContainer}>
-          <Text style={styles.poolTitle}>
-            🎯 Pool ID: {ticket.poolId.toString()}
-          </Text>
-          <Text style={styles.poolAddress}>
-            🏊 Pool: {ticket.pool.toBase58()}
-          </Text>
-          {ticket.tickets.map((t, i) => (
-            <View key={i} style={styles.ticket}>
-              <View style={styles.notchSection}>
-                <Text style={styles.ticketNumber}>
-                  {t.ticket_number.toString()}
-                </Text>
-              </View>
-              <View style={styles.ticketContent}>
-                <Text style={styles.ticketTitle}>🎟️ FortuneX</Text>
-                <Text style={styles.ticketDetail}>
-                  💰 {(Number(t.amount_paid) / 1e6).toFixed(2)} USDC
-                </Text>
-                <Text style={styles.ticketDetail}>
-                  🕒 {new Date(Number(t.timestamp) * 1000).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      ))}
-    </ScrollView>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
+        {renderTicketsByPool()}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#121212',
-    borderRadius: 16,
+    flex: 1,
+    // backgroundColor: '#1a1a1a',
   },
-  poolContainer: {},
-  poolTitle: {
-    color: 'white',
-    fontSize: 16,
+  headerStats: {
+    flexDirection: 'row',
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#e5c384',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#ffffff',
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#444',
+    marginHorizontal: 16,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  poolSection: {
+    marginBottom: 20,
+  },
+  poolHeader: {
+    // marginHorizontal: 16,
+    marginTop: 20,
+    // marginBottom: 10,
+    // padding: 16,
+    // backgroundColor: '#2a2a2a',
+    // borderRadius: 12,
+    // borderLeftWidth: 4,
+    // borderLeftColor: '#e5c384',
+  },
+  poolTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   poolAddress: {
     color: '#ccc',
     fontSize: 12,
-    marginBottom: 12,
+    fontFamily: 'monospace',
+    marginBottom: 8,
   },
-  ticket: {
-    flexDirection: 'row',
-    backgroundColor: '#FFD70022', // goldish transparent
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderColor: '#10B981',
-    borderWidth: 1,
-    marginBottom: 12,
-    elevation: 3,
-  },
-  notchSection: {
-    width: 32,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-  },
-  ticketContent: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  ticketNumber: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  ticketTitle: {
-    color: '#10B981',
-    fontWeight: 'bold',
+  poolStats: {
+    color: '#e5c384',
     fontSize: 14,
-    marginBottom: 4,
-  },
-  ticketDetail: {
-    color: '#ccc',
-    fontSize: 12,
+    fontWeight: '600',
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
   },
-  ticketCard: {
-    marginBottom: 12,
-    backgroundColor: '#1e1e1e',
-    padding: 16,
-    borderRadius: 12,
-  },
-  title: {
-    fontWeight: 'bold',
+  connectText: {
     color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  noTicketsText: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  noTicketsTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  noTicketsSubtitle: {
+    color: '#ccc',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

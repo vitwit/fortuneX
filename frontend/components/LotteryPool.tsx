@@ -66,7 +66,7 @@ interface GlobalStateData {
 // const VAULT_AUTHORITY_SEED = 'vault_authority';
 // const USER_TICKET_SEED = 'user_ticket';
 
-const USDC_MINT = new PublicKey('3FToTvATtWvmufYiJUPPk9SBUVqZnZaMfkRkD3ZimKy1');
+const USDC_MINT = new PublicKey('EuURVxuHfvmb1y5AanMob4PF4DFhi7fn4t6F3kSTjHPz');
 
 export default function LotteryPoolsComponent(): JSX.Element {
   const {connection} = useConnection();
@@ -95,8 +95,7 @@ export default function LotteryPoolsComponent(): JSX.Element {
 
   // TODO: make this dynamic
   const TICKET_PRICE: number = 10_000_000; // $10 USDC (6 decimals)
-  const TOTAL_TICKETS: number = 10;
-  const MAX_POOL_AMOUNT: number = 100_000_000; // $100 USDC
+  const TOTAL_TICKETS: number = 5;
 
   // Pulse animation for the lottery icon
   useEffect(() => {
