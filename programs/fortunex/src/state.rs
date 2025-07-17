@@ -55,20 +55,16 @@ impl GlobalState {
 pub struct LotteryPool {
     pub pool_id: u64,       // Unique pool ID (from global pools_count)
     pub status: PoolStatus, // Current pool status
-    pub prize_pool: u64,    // Total USDC in pool (max $100)
-    #[max_len(10)]
-    pub participants: Vec<Pubkey>, // List of participant wallets (max 10)
-    pub tickets_sold: u64,  // Number of tickets sold (max 10)
+    pub prize_pool: u64,    // Total USDC in pool
+    pub ticket_price: u64,  // Price of each ticket
+    #[max_len(100)]
+    pub tickets_sold: Vec<Pubkey>, // List of tickets sold
+    pub min_tickets: u64,   // Minimum number of tickets need to be sold in pool
+    pub max_tickets: u64,   // Maximum number of tickets in pool
     pub draw_interval: i64, // Draw interval in seconds (e.g., 24 hours)
     pub draw_time: i64,     // Next draw timestamp
     pub created_at: i64,    // When pool was created
     pub bump: u8,
-}
-
-impl LotteryPool {
-    pub const MAX_PARTICIPANTS: usize = 5; // Exactly 10 participants per round
-    pub const TICKET_PRICE: u64 = 10_000_000; // $10 USDC (6 decimals)
-    pub const MAX_PRIZE_POOL: u64 = 10_000_000; // $100 USDC (6 decimals)
 }
 
 // User's ticket entry for the pool
@@ -108,14 +104,13 @@ pub struct PoolVault {
 #[account]
 #[derive(InitSpace)]
 pub struct DrawHistory {
-    pub pool: Pubkey,            // Pool this draw belongs to
-    pub pool_id: u64,            // Pool ID
-    pub winner: Pubkey,          // Winner address
-    pub prize_amount: u64,       // Amount won
-    pub total_participants: u64, // Total participants in draw
-    pub total_tickets: u64,      // Total tickets in draw
-    pub draw_timestamp: i64,     // When draw occurred
-    pub winning_ticket: u64,     // Winning ticket number
-    pub random_seed: [u8; 32],   // Random seed used
+    pub pool: Pubkey,          // Pool this draw belongs to
+    pub pool_id: u64,          // Pool ID
+    pub winner: Pubkey,        // Winner address
+    pub prize_amount: u64,     // Amount won
+    pub total_tickets: u64,    // Total tickets in draw
+    pub draw_timestamp: i64,   // When draw occurred
+    pub winning_ticket: u64,   // Winning ticket number
+    pub random_seed: [u8; 32], // Random seed used
     pub bump: u8,
 }

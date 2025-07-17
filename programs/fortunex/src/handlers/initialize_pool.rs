@@ -2,16 +2,31 @@ use crate::enums::PoolStatus;
 use crate::instructions::InitializePool;
 use anchor_lang::prelude::*;
 
-pub fn initialize_pool(ctx: Context<InitializePool>, draw_interval: i64) -> Result<()> {
+pub fn initialize_pool(
+    ctx: Context<InitializePool>,
+    ticket_price: u64,
+    min_tickets: u64,
+    max_tickets: u64,
+    draw_interval: i64,
+) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
     let lottery_pool = &mut ctx.accounts.lottery_pool;
     let clock = Clock::get()?;
 
-    // Validate draw interval (minimum 1 hour, maximum 7 days)
-    require!(
-        draw_interval >= 3600 && draw_interval <= 604800,
-        crate::FortuneXError::InvalidDrawInterval
-    );
+    // Validate given ticket price
+    require!(ticket_price > 0, crate::FortuneXError::InvalidTicketPrice);
+
+    // Validate given max tickets value
+    require!(max_tickets > 0, crate::FortuneXError::InvalidMaxTickets);
+
+    // Validate min_tickets cannot be greater than max_tickets
+    require!(max_tickets >= min_tickets, crate::FortuneXError::InvalidMinMaxTickets);
+
+    // // Validate draw interval (minimum 1 hour, maximum 7 days)
+    // require!(
+    //     draw_interval >= 3600 && draw_interval <= 604800,
+    //     crate::FortuneXError::InvalidDrawInterval
+    // );
 
     // Check if creator is whitelisted (only whitelisted creators can create pools)
     require!(
@@ -23,8 +38,10 @@ pub fn initialize_pool(ctx: Context<InitializePool>, draw_interval: i64) -> Resu
     lottery_pool.pool_id = global_state.pools_count;
     lottery_pool.status = PoolStatus::Active;
     lottery_pool.prize_pool = 0;
-    lottery_pool.participants = Vec::new();
-    lottery_pool.tickets_sold = 0;
+    lottery_pool.ticket_price = ticket_price;
+    lottery_pool.min_tickets = min_tickets;
+    lottery_pool.max_tickets = max_tickets;
+    lottery_pool.tickets_sold = Vec::new();
     lottery_pool.draw_interval = draw_interval;
     lottery_pool.draw_time = clock.unix_timestamp + draw_interval;
     lottery_pool.created_at = clock.unix_timestamp;

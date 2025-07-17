@@ -29,8 +29,14 @@ pub mod fortunex {
     }
 
     // Initialize a new lottery pool
-    pub fn initialize_pool(ctx: Context<InitializePool>, draw_interval: i64) -> Result<()> {
-        handlers::initialize_pool(ctx, draw_interval)
+    pub fn initialize_pool(
+        ctx: Context<InitializePool>,
+        ticket_price: u64,
+        min_tickets: u64,
+        max_tickets: u64,
+        draw_interval: i64,
+    ) -> Result<()> {
+        handlers::initialize_pool(ctx, ticket_price, min_tickets, max_tickets, draw_interval)
     }
 
     // Update creators whitelist
@@ -40,7 +46,7 @@ pub mod fortunex {
 
     // Buy a ticket for the lottery
     pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Result<()> {
-        handlers::buy_ticket(ctx, pool_id,quantity)
+        handlers::buy_ticket(ctx, pool_id, quantity)
     }
 
     // Draw the winner

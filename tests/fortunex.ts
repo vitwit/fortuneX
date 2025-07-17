@@ -119,9 +119,9 @@ describe("fortunex", () => {
     );
 
     // Create lottery pool
-    const drawInterval = 86400; // 24 hours
+    const drawInterval = 30; // 24 hours
     const tx = await program.methods
-      .initializePool(new anchor.BN(drawInterval))
+      .initializePool(new anchor.BN(10_000_000), new anchor.BN(5), new anchor.BN(5), new anchor.BN(drawInterval))
       .accounts({
         globalState: globalStatePda,
         lotteryPool: lotteryPoolPda,
@@ -231,9 +231,7 @@ describe("fortunex", () => {
         `🔍 Participant ${i + 1} balance before: ${balance.value.uiAmount} USDC`
       );
 
-      // First ticket
       let pool = await program.account.lotteryPool.fetch(lotteryPoolPda);
-      let ticketNumber = new anchor.BN(pool.ticketsSold);
       let [userTicketPda] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(USER_TICKET_SEED),
@@ -291,7 +289,7 @@ describe("fortunex", () => {
 
     const poolBefore = await program.account.lotteryPool.fetch(lotteryPoolPda);
     const remainingAccounts = await Promise.all(
-      poolBefore.participants.map(async (participant: PublicKey) => {
+      poolBefore.ticketsSold.map(async (participant: PublicKey) => {
         const ata = await getAssociatedTokenAddress(usdcMint, participant);
         return {
           pubkey: ata,
@@ -300,6 +298,13 @@ describe("fortunex", () => {
         };
       })
     );
+
+    function sleep() {
+      console.log(`Waiting for draw time....`);
+      const end = poolBefore.drawTime.toNumber() * 1000;
+      while (Date.now() < (end + 2000)) { }
+    }
+    sleep();
 
     const drawTx = await program.methods
       .drawWinner(new anchor.BN(poolId))

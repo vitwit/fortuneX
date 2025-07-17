@@ -26,6 +26,12 @@ pub enum FortuneXError {
     UserAlreadyHasTicket,
     #[msg("All tickets sold")]
     AllTicketsSold,
+    #[msg("Ticket price cannot be zero")]
+    InvalidTicketPrice,
+    #[msg("Max tickets cannot be zero")]
+    InvalidMaxTickets,
+    #[msg("Min tickets value cannot be greater than Max tickets value")]
+    InvalidMinMaxTickets,
     #[msg("Invalid draw interval")]
     InvalidDrawInterval,
     #[msg("Invalid platform fee")]
@@ -40,11 +46,9 @@ pub enum FortuneXError {
     CreatorNotAllowed,
     #[msg("Arithmetic overflow occurred")]
     Overflow,
-    #[msg("Already participating")]
-    UserAlreadyParticipating,
-    #[msg("Pool not ready for draw")]
-    PoolNotReadyForDraw,
-    #[msg("Pool not full")]
+    #[msg("Pool draw is already completed")]
+    PoolDrawCompleted,
+    #[msg("Pool is not full")]
     PoolNotFull,
     #[msg("Winner token account not found")]
     WinnerTokenAccountNotFound,
