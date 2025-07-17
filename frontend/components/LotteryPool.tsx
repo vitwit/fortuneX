@@ -68,7 +68,13 @@ interface GlobalStateData {
 
 const USDC_MINT = new PublicKey('EuURVxuHfvmb1y5AanMob4PF4DFhi7fn4t6F3kSTjHPz');
 
-export default function LotteryPoolsComponent(): JSX.Element {
+export default function LotteryPoolsComponent({
+  horizontalView = true,
+  showActive = true,
+}: {
+  horizontalView?: boolean;
+  showActive?: boolean;
+}): JSX.Element {
   const {connection} = useConnection();
   const [pools, setPools] = useState<LotteryPoolData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -523,8 +529,7 @@ export default function LotteryPoolsComponent(): JSX.Element {
       setTicketCount('1');
       setModalVisible(false);
 
-      // Refresh pool data here if needed
-      // await fetchPoolData();
+      await fetchPools();
     } catch (err: any) {
       alertAndLog(
         'Purchase Failed',
@@ -563,6 +568,10 @@ export default function LotteryPoolsComponent(): JSX.Element {
     const remainingTickets = TOTAL_TICKETS - item.ticketsSold;
     const poolType = getPoolType(item.prizePool);
 
+    if (!isActive && showActive) {
+      return null;
+    }
+
     return (
       <View key={item.poolId} style={styles.poolCard}>
         <View style={styles.poolHeader}>
@@ -590,17 +599,15 @@ export default function LotteryPoolsComponent(): JSX.Element {
         </View>
 
         <View style={styles.poolPrize}>
-          <Text style={styles.poolPrizeAmount}>
-            ${formatUSDC(item.prizePool)}
-          </Text>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Text style={styles.maxPoolAmount}>
+              ${formatUSDC(TICKET_PRICE * TOTAL_TICKETS)}
+            </Text>
+          </View>
           <Text style={styles.poolPrizeLabel}>Prize Pool</Text>
         </View>
 
         <View style={styles.poolInfo}>
-          <View style={styles.poolInfoRow}>
-            <Text style={styles.poolInfoLabel}>Participants</Text>
-            <Text style={styles.poolInfoValue}>{item.participants.length}</Text>
-          </View>
           <View style={styles.poolInfoRow}>
             <Text style={styles.poolInfoLabel}>Ticket Price</Text>
             <Text style={styles.poolInfoValue}>
@@ -771,7 +778,7 @@ export default function LotteryPoolsComponent(): JSX.Element {
     <View style={styles.container}>
       {/* Pools List */}
       <ScrollView
-        horizontal
+        horizontal={horizontalView}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.poolsScrollContainer}>
         {pools.length === 0
@@ -792,6 +799,7 @@ const styles = StyleSheet.create({
   poolsScrollContainer: {
     paddingHorizontal: 20,
     paddingVertical: 10,
+    alignItems: 'center',
   },
   poolCard: {
     width: 280,
@@ -801,6 +809,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
     borderWidth: 1,
     borderColor: '#2A2A2A',
+    marginTop: 10,
   },
   poolHeader: {
     flexDirection: 'row',
@@ -843,6 +852,12 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  maxPoolAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#10B981',
     marginBottom: 4,
   },
   poolPrizeLabel: {

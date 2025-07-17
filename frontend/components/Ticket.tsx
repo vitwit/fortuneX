@@ -154,7 +154,7 @@ const RaffleTicket = ({
               </Text>
 
               {/* Pool ID */}
-              <Text style={styles.poolId}>POOL: {poolId}...</Text>
+              <Text style={styles.poolId}>POOL: {poolId}</Text>
             </View>
 
             {/* Left Hatched Pattern */}
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingLeft: 60,
+    paddingLeft: 75,
     paddingRight: 20,
   },
   contestName: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   rightStub: {
-    width: 80,
+    width: 100,
     backgroundColor: '#e5c384',
     borderTopRightRadius: 10,
     borderBottomRightRadius: 10,
@@ -345,13 +345,13 @@ const styles = StyleSheet.create({
     right: 15,
     top: 15,
     bottom: 15,
-    width: 50,
+    width: 60,
     justifyContent: 'center',
   },
   barcodeLine: {
     height: 2,
     backgroundColor: '#2a2a2a',
-    marginVertical: 0.5,
+    marginVertical: 0.5,  
   },
   boughtDateContainer: {
     position: 'absolute',

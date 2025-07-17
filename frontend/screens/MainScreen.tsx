@@ -26,6 +26,7 @@ import History from '../components/History';
 import Profile from '../components/Profile';
 import RecentWinner from '../components/RecentWinner';
 import RaffleTicket from '../components/Ticket';
+import AllPools from '../components/AllPools';
 
 const {width, height} = Dimensions.get('window');
 
@@ -107,7 +108,11 @@ export default function MainScreen() {
           <View style={styles.poolsSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Live Pools</Text>
-              <TouchableOpacity style={styles.viewAllButton}>
+              <TouchableOpacity
+                style={styles.viewAllButton}
+                onPress={() => {
+                  setActiveTab('Pools');
+                }}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
@@ -142,6 +147,14 @@ export default function MainScreen() {
       );
     }
 
+    if (activeTab === 'Pools') {
+      return (
+        <View>
+          <AllPools />
+        </View>
+      );
+    }
+
     return null;
   };
 
@@ -149,7 +162,7 @@ export default function MainScreen() {
     const icons = {
       Home: '🏠',
       History: '📊',
-      Tickets: '🎫',
+      Pools: '🎫',
       Profile: '👤',
     };
 
@@ -255,16 +268,16 @@ export default function MainScreen() {
           <TouchableOpacity
             style={[
               styles.tabButton,
-              activeTab === 'Tickets' && styles.activeTab,
+              activeTab === 'Pools' && styles.activeTab,
             ]}
-            onPress={() => handleTabPress('Tickets')}>
-            <TabIcon name="Tickets" isActive={activeTab === 'Tickets'} />
+            onPress={() => handleTabPress('Pools')}>
+            <TabIcon name="Pools" isActive={activeTab === 'Pools'} />
             <Text
               style={[
                 styles.tabLabel,
-                activeTab === 'Tickets' && styles.activeTabLabel,
+                activeTab === 'Pools' && styles.activeTabLabel,
               ]}>
-              Tickets
+              Pools
             </Text>
           </TouchableOpacity>
 
@@ -685,7 +698,6 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
     borderRadius: 12,
   },
   activeTab: {

@@ -440,7 +440,7 @@ async function main() {
     // );
 
     // ✅ Create lottery pool with 5 minutes expiry
-    // const poolResult = await client.createLotteryPool(creator, 300); // 300 seconds = 5 minutes
+    const poolResult = await client.createLotteryPool(creator, 34000); // 300 seconds = 5 minutes
     // console.log("🎉 Setup complete!");
     // console.log("Pool ID:", poolResult.poolId);
     // console.log("Pool PDA:", poolResult.poolPda.toBase58());
@@ -451,19 +451,19 @@ async function main() {
 
     // ✅ Example: Draw winner (uncomment when ready to use)
     // Create platform token account first
-    const platformTokenAccount = await client.createTokenAccount(
-      usdcMint,
-      platformWallet.publicKey,
-      authority
-    );
+    // const platformTokenAccount = await client.createTokenAccount(
+    //   usdcMint,
+    //   platformWallet.publicKey,
+    //   authority
+    // );
     
-    // Wait for pool to have participants and expire, then draw
-    const drawResult = await client.drawWinner(
-      crank,
-      0,
-      platformTokenAccount
-    );
-    console.log("🏆 Draw completed:", drawResult);
+    // // Wait for pool to have participants and expire, then draw
+    // const drawResult = await client.drawWinner(
+    //   crank,
+    //   0,
+    //   platformTokenAccount
+    // );
+    // console.log("🏆 Draw completed:", drawResult);
 
   } catch (err) {
     console.error("❌ Setup failed:", err);

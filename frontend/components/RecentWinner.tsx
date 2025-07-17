@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {PublicKey} from '@solana/web3.js';
 import {useConnection} from './providers/ConnectionProvider';
+import {useAuthorization} from './providers/AuthorizationProvider';
 import {
   Text,
   View,
@@ -8,6 +9,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 
 type ParsedDrawHistory = {
@@ -28,10 +32,49 @@ const PROGRAM_ID = new PublicKey(
   'HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu',
 );
 
+const {width} = Dimensions.get('window');
+
 export default function RecentWinner() {
   const {connection} = useConnection();
+  const {selectedAccount} = useAuthorization();
   const [loading, setLoading] = useState<boolean>(true);
   const [recentWinners, setRecentWinners] = useState<ParsedDrawHistory[]>([]);
+  const [pulseAnim] = useState(new Animated.Value(1));
+  const [slideAnim] = useState(new Animated.Value(0));
+
+  const currentWallet = selectedAccount?.publicKey.toBase58();
+
+  useEffect(() => {
+    // Pulse animation for loading
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    if (loading) {
+      pulse.start();
+    } else {
+      pulse.stop();
+      // Slide in animation when loaded
+      Animated.timing(slideAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+    }
+
+    return () => pulse.stop();
+  }, [loading, pulseAnim, slideAnim]);
 
   useEffect(() => {
     const fetchRecentWinners = async () => {
@@ -41,15 +84,12 @@ export default function RecentWinner() {
 
         const parsed: ParsedDrawHistory[] = accounts
           .filter(acc => {
-            // Filter for draw history accounts based on account size
-            // Draw history accounts should have a specific size based on the struct
-            const expectedSize = 8 + 32 + 8 + 32 + 8 + 8 + 8 + 8 + 8 + 32 + 1; // discriminator + struct fields
+            const expectedSize = 8 + 32 + 8 + 32 + 8 + 8 + 8 + 8 + 8 + 32 + 1;
             return acc.account.data.length === expectedSize;
           })
           .map(acc => {
             const data = acc.account.data;
-            
-            // Parse the draw history data structure
+
             const pool = new PublicKey(data.slice(8, 40));
             const poolId = data.readBigUInt64LE(40);
             const winner = new PublicKey(data.slice(48, 80));
@@ -76,10 +116,9 @@ export default function RecentWinner() {
             };
           });
 
-        // Sort by timestamp (most recent first) and take last 5
         const sortedWinners = parsed
           .sort((a, b) => Number(b.drawTimestamp) - Number(a.drawTimestamp))
-          .slice(0, 5);
+          .slice(0, 10);
 
         setRecentWinners(sortedWinners);
       } catch (err) {
@@ -106,15 +145,114 @@ export default function RecentWinner() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const renderWinnerCard = (winner: ParsedDrawHistory, index: number) => {
+  const isCurrentUserWinner = (winner: ParsedDrawHistory): boolean => {
     return (
-      <View key={winner.pubkey.toString()} style={styles.winnerCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.rankBadge}>
-            <Text style={styles.rankText}>#{index + 1}</Text>
+      currentWallet !== undefined && winner.winner.toBase58() === currentWallet
+    );
+  };
+
+  const getWinnerEmoji = (): string => {
+    const emojis = ['🎉', '🎊', '🎯', '🔥'];
+    return emojis[Math.floor(Math.random() * emojis.length)];
+  };
+
+  const getWinnerColors = (isCurrentUser: boolean) => {
+    if (isCurrentUser) {
+      return {
+        background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+        border: '#FFD700',
+        glow: '#FFD700',
+      };
+    }
+
+    // Random vibrant colors for each winner
+    const colors = [
+      {
+        background: 'linear-gradient(135deg, #4A90E2, #357ABD)',
+        border: '#4A90E2',
+        glow: '#4A90E2',
+      },
+      {
+        background: 'linear-gradient(135deg, #E74C3C, #C0392B)',
+        border: '#E74C3C',
+        glow: '#E74C3C',
+      },
+      {
+        background: 'linear-gradient(135deg, #9B59B6, #8E44AD)',
+        border: '#9B59B6',
+        glow: '#9B59B6',
+      },
+      {
+        background: 'linear-gradient(135deg, #1ABC9C, #16A085)',
+        border: '#1ABC9C',
+        glow: '#1ABC9C',
+      },
+      {
+        background: 'linear-gradient(135deg, #F39C12, #E67E22)',
+        border: '#F39C12',
+        glow: '#F39C12',
+      },
+      {
+        background: 'linear-gradient(135deg, #2ECC71, #27AE60)',
+        border: '#2ECC71',
+        glow: '#2ECC71',
+      },
+    ];
+
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
+  const renderWinnerCard = (winner: ParsedDrawHistory, index: number) => {
+    const isCurrentUser = isCurrentUserWinner(winner);
+    const winnerColors = getWinnerColors(isCurrentUser);
+    const cardDelay = index * 100;
+
+    return (
+      <Animated.View
+        key={winner.pubkey.toString()}
+        style={[
+          styles.winnerCard,
+          isCurrentUser && styles.currentUserCard,
+          {
+            transform: [
+              {
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [50, 0],
+                }),
+              },
+            ],
+            opacity: slideAnim,
+          },
+        ]}>
+        {/* Glow effect for current user */}
+        {isCurrentUser && (
+          <View style={[styles.glowEffect, {shadowColor: winnerColors.glow}]} />
+        )}
+
+        {/* Current user badge */}
+        {isCurrentUser && (
+          <View style={styles.yourWinBadge}>
+            <Text style={styles.yourWinText}>🎉 YOUR WIN!</Text>
           </View>
+        )}
+
+        <View style={styles.cardHeader}>
+          <View
+            style={[
+              styles.winnerBadge,
+              {backgroundColor: winnerColors.border},
+            ]}>
+            <Text style={styles.winnerEmoji}>{getWinnerEmoji()}</Text>
+            <Text style={styles.winnerText}>WINNER</Text>
+          </View>
+
           <View style={styles.prizeSection}>
-            <Text style={styles.prizeAmount}>
+            <Text
+              style={[
+                styles.prizeAmount,
+                isCurrentUser && styles.currentUserPrize,
+              ]}>
               ${formatAmount(winner.prizeAmount)}
             </Text>
             <Text style={styles.prizeLabel}>Prize Won</Text>
@@ -122,49 +260,78 @@ export default function RecentWinner() {
         </View>
 
         <View style={styles.cardContent}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Winner:</Text>
-            <Text style={styles.infoValue}>
-              {truncateAddress(winner.winner.toBase58())}
-            </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {winner.totalParticipants.toString()}
+              </Text>
+              <Text style={styles.statLabel}>Players</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {winner.totalTickets.toString()}
+              </Text>
+              <Text style={styles.statLabel}>Tickets</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                #{winner.winningTicket.toString()}
+              </Text>
+              <Text style={styles.statLabel}>Lucky #</Text>
+            </View>
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Pool:</Text>
-            <Text style={styles.infoValue}>
-              #{winner.poolId.toString()}
-            </Text>
+          <View style={styles.detailsSection}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Winner</Text>
+              <Text
+                style={[
+                  styles.detailValue,
+                  isCurrentUser && styles.currentUserText,
+                ]}>
+                {isCurrentUser
+                  ? 'You! 🎉'
+                  : truncateAddress(winner.winner.toBase58())}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Pool #</Text>
+              <Text style={styles.detailValue}>{winner.poolId.toString()}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Draw Date</Text>
+              <Text style={styles.detailValue}>
+                {formatDate(winner.drawTimestamp)}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Winning Ticket:</Text>
-            <Text style={styles.infoValue}>
-              #{winner.winningTicket.toString()}
+          {/* Winning odds */}
+          <View style={styles.oddsSection}>
+            <Text style={styles.oddsText}>
+              Winning Odds: 1 in {winner.totalTickets.toString()}
             </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Participants:</Text>
-            <Text style={styles.infoValue}>
-              {winner.totalParticipants.toString()}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Total Tickets:</Text>
-            <Text style={styles.infoValue}>
-              {winner.totalTickets.toString()}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Date:</Text>
-            <Text style={styles.infoValue}>
-              {formatDate(winner.drawTimestamp)}
-            </Text>
+            <View style={styles.oddsBar}>
+              <View
+                style={[
+                  styles.oddsBarFill,
+                  {
+                    width: `${Math.min(
+                      100,
+                      (1 / Number(winner.totalTickets)) * 100 * 10,
+                    )}%`,
+                    backgroundColor: isCurrentUser ? '#FFD700' : '#e5c384',
+                  },
+                ]}
+              />
+            </View>
           </View>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -172,8 +339,16 @@ export default function RecentWinner() {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#e5c384" />
+          <Animated.View
+            style={[
+              styles.loadingContainer,
+              {transform: [{scale: pulseAnim}]},
+            ]}>
+            <Text style={styles.loadingEmoji}>🎰</Text>
+            <ActivityIndicator size="large" color="#e5c384" />
+          </Animated.View>
           <Text style={styles.loadingText}>Loading recent winners...</Text>
+          <Text style={styles.loadingSubtext}>Fetching the hall of fame!</Text>
         </View>
       </View>
     );
@@ -183,10 +358,13 @@ export default function RecentWinner() {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
-          <Text style={styles.noWinnersText}>🏆</Text>
-          <Text style={styles.noWinnersTitle}>No winners yet</Text>
+          <Text style={styles.noWinnersEmoji}>🎯</Text>
+          <Text style={styles.noWinnersTitle}>No Winners Yet</Text>
           <Text style={styles.noWinnersSubtitle}>
-            Be the first to win a prize!
+            Be the first legend to claim victory!
+          </Text>
+          <Text style={styles.noWinnersMotivation}>
+            🚀 Your name could be here next! 🚀
           </Text>
         </View>
       </View>
@@ -196,10 +374,14 @@ export default function RecentWinner() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🏆 Recent Winners</Text>
+        <Text style={styles.headerTitle}>🎊 Recent Winners</Text>
         <Text style={styles.headerSubtitle}>
-          Last {recentWinners.length} winner{recentWinners.length > 1 ? 's' : ''}
+          {recentWinners.length} recent champion
+          {recentWinners.length > 1 ? 's' : ''}
         </Text>
+        <View style={styles.headerDecoration}>
+          <Text style={styles.decorationText}>🎉 Every win counts! 🎉</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -215,58 +397,119 @@ export default function RecentWinner() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0a0a',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 2,
     borderBottomColor: '#333',
+    backgroundColor: '#1a1a1a',
   },
   headerTitle: {
-    color: '#ffffff',
-    fontSize: 24,
+    color: '#FFD700',
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 4,
+    textAlign: 'center',
+    marginBottom: 8,
+    textShadowColor: '#FFD700',
+    textShadowOffset: {width: 0, height: 0},
+    textShadowRadius: 10,
   },
   headerSubtitle: {
-    color: '#ccc',
+    color: '#e5c384',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  headerDecoration: {
+    alignItems: 'center',
+  },
+  decorationText: {
+    color: '#e5c384',
     fontSize: 14,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
   },
   winnerCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    marginBottom: 16,
-    padding: 16,
-    elevation: 4,
+    borderRadius: 20,
+    marginBottom: 20,
+    padding: 20,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: '#e5c384',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: '#404040',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  currentUserCard: {
+    backgroundColor: '#3a2f1a',
+    borderColor: '#FFD700',
+    borderWidth: 3,
+  },
+  glowEffect: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 25,
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  yourWinBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    transform: [{rotate: '15deg'}],
+    zIndex: 10,
+  },
+  yourWinText: {
+    color: '#1a1a1a',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  rankBadge: {
-    backgroundColor: '#e5c384',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+  winnerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  rankText: {
+  winnerEmoji: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  winnerText: {
     color: '#1a1a1a',
     fontSize: 14,
     fontWeight: 'bold',
@@ -276,31 +519,98 @@ const styles = StyleSheet.create({
   },
   prizeAmount: {
     color: '#e5c384',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
+    textShadowColor: '#e5c384',
+    textShadowOffset: {width: 0, height: 0},
+    textShadowRadius: 5,
+  },
+  currentUserPrize: {
+    color: '#FFD700',
+    textShadowColor: '#FFD700',
   },
   prizeLabel: {
     color: '#ccc',
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
   },
   cardContent: {
-    gap: 8,
+    gap: 16,
   },
-  infoRow: {
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 15,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    color: '#e5c384',
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+  statLabel: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#404040',
+    marginHorizontal: 8,
+  },
+  detailsSection: {
+    gap: 12,
+  },
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  infoLabel: {
-    color: '#ccc',
+  detailLabel: {
+    color: '#999',
     fontSize: 14,
+    fontWeight: '500',
   },
-  infoValue: {
+  detailValue: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'monospace',
+  },
+  currentUserText: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+  },
+  oddsSection: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  oddsText: {
+    color: '#ccc',
+    fontSize: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  oddsBar: {
+    height: 4,
+    backgroundColor: '#333',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  oddsBarFill: {
+    height: '100%',
+    borderRadius: 2,
   },
   centered: {
     flex: 1,
@@ -308,24 +618,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  loadingText: {
-    marginTop: 16,
-    color: '#ffffff',
-    fontSize: 16,
-  },
-  noWinnersText: {
-    fontSize: 64,
+  loadingContainer: {
+    alignItems: 'center',
     marginBottom: 20,
   },
-  noWinnersTitle: {
-    color: '#ffffff',
-    fontSize: 20,
+  loadingEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  loadingText: {
+    color: '#e5c384',
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  noWinnersSubtitle: {
+  loadingSubtext: {
     color: '#ccc',
     fontSize: 14,
     textAlign: 'center',
+  },
+  noWinnersEmoji: {
+    fontSize: 72,
+    marginBottom: 24,
+  },
+  noWinnersTitle: {
+    color: '#e5c384',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  noWinnersSubtitle: {
+    color: '#ccc',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  noWinnersMotivation: {
+    color: '#FFD700',
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
