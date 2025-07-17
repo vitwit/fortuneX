@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default function ConnectButton({
-  title = '🔌 Connect Wallet',
+  title = 'Connect Wallet',
   style,
 }: Props) {
   const {authorizeSession} = useAuthorization();
@@ -60,7 +60,7 @@ export default function ConnectButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#10B981',
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 8,

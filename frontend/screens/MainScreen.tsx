@@ -9,7 +9,6 @@ import {
   Animated,
   SafeAreaView,
   TouchableOpacity,
-  Button,
 } from 'react-native';
 
 import {Section} from '../components/Section';
@@ -23,6 +22,14 @@ import {useConnection} from '../components/providers/ConnectionProvider';
 import LotteryPoolsComponent from '../components/LotteryPool';
 import {useNavigation} from '../components/providers/NavigationProvider';
 import LotteryPoolInfo from '../components/LotteryPoolInfo';
+import History from '../components/History';
+import Profile from '../components/Profile';
+
+const {width, height} = Dimensions.get('window');
+
+// Calculate bottom navigation height
+const BOTTOM_NAV_HEIGHT = 80; // Approximate height of bottom navigation
+const BOTTOM_SAFE_AREA = 20; // Safe area for devices with home indicator
 
 export default function MainScreen() {
   const {connection} = useConnection();
@@ -30,6 +37,8 @@ export default function MainScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const [activeTab, setActiveTab] = useState('Home');
+  const [pulseAnim] = useState(new Animated.Value(1));
   const {goBack, screen, params} = useNavigation();
 
   const fetchAndUpdateBalance = useCallback(
@@ -63,19 +72,144 @@ export default function MainScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim]);
+
+    // Pulse animation for active elements
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulseAnimation.start();
+
+    return () => pulseAnimation.stop();
+  }, [fadeAnim, slideAnim, pulseAnim]);
+
+  const handleTabPress = (tab: string) => {
+    setActiveTab(tab);
+  };
+
+  const renderTabContent = () => {
+    if (activeTab === 'Home') {
+      return (
+        <View style={styles.homeContent}>
+          {/* Active Pools Section */}
+          <View style={styles.poolsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Live Pools</Text>
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Pool Cards */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.poolsScroll}>
+              <LotteryPoolsComponent />
+            </ScrollView>
+          </View>
+
+          {/* Recent Winners */}
+          <View style={styles.winnersSection}>
+            <Text style={styles.sectionTitle}>Recent Winners</Text>
+            <View style={styles.winnersList}>
+              <View style={styles.winnerItem}>
+                <View style={styles.winnerAvatar}>
+                  <Text style={styles.winnerInitials}>JD</Text>
+                </View>
+                <View style={styles.winnerInfo}>
+                  <Text style={styles.winnerName}>John D.</Text>
+                  <Text style={styles.winnerTime}>2 hours ago</Text>
+                </View>
+                <Text style={styles.winnerAmount}>$12,500</Text>
+              </View>
+
+              <View style={styles.winnerItem}>
+                <View style={styles.winnerAvatar}>
+                  <Text style={styles.winnerInitials}>SM</Text>
+                </View>
+                <View style={styles.winnerInfo}>
+                  <Text style={styles.winnerName}>Sarah M.</Text>
+                  <Text style={styles.winnerTime}>5 hours ago</Text>
+                </View>
+                <Text style={styles.winnerAmount}>$8,750</Text>
+              </View>
+
+              <View style={styles.winnerItem}>
+                <View style={styles.winnerAvatar}>
+                  <Text style={styles.winnerInitials}>RK</Text>
+                </View>
+                <View style={styles.winnerInfo}>
+                  <Text style={styles.winnerName}>Robert K.</Text>
+                  <Text style={styles.winnerTime}>1 day ago</Text>
+                </View>
+                <Text style={styles.winnerAmount}>$25,000</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (activeTab === 'History') {
+      return (
+        <View style={styles.historySection}>
+          <History />
+        </View>
+      );
+    }
+
+    if (activeTab === 'Profile') {
+      return (
+        <View>
+          <Profile />
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  const TabIcon = ({name, isActive}: {name: string; isActive: boolean}) => {
+    const icons = {
+      Home: '🏠',
+      History: '📊',
+      Tickets: '🎫',
+      Profile: '👤',
+    };
+
+    return (
+      <View style={[styles.tabIcon, isActive && styles.activeTabIcon]}>
+        <Text
+          style={[styles.tabIconText, isActive && styles.activeTabIconText]}>
+          {icons[name as keyof typeof icons]}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F0F23" />
+      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
 
-      {/* Background Gradient Effect */}
-      <View style={styles.backgroundGradient}>
-        <View style={styles.gradientCircle1} />
-        <View style={styles.gradientCircle2} />
+      {/* Background Effects */}
+      <View style={styles.backgroundEffects}>
+        <View style={styles.gradientOrb1} />
+        <View style={styles.gradientOrb2} />
+        <View style={styles.gradientOrb3} />
       </View>
 
-      {/* Header Section */}
+      {/* Header */}
       <Animated.View
         style={[
           styles.header,
@@ -85,142 +219,106 @@ export default function MainScreen() {
           },
         ]}>
         <View style={styles.headerContent}>
-          <Text style={styles.appTitle}>FortuneX</Text>
-          <Text style={styles.appSubtitle}>A Millionaire Daily</Text>
-        </View>
+          <View style={styles.headerLeft}>
+            <Text style={styles.appTitle}>FortuneX</Text>
+            <Text style={styles.appSubtitle}>A Millionaire Daily</Text>
+          </View>
 
-        {/* Network Status */}
-        <View style={styles.networkStatus}>
-          <View style={styles.networkDot} />
-          <Text style={styles.networkText}>Devnet</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Text style={styles.notificationIcon}>🔔</Text>
+              <View style={styles.notificationBadge} />
+            </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
 
-      {/* <ScrollView> */}
-
-      {/* </ScrollView> */}
-
       {/* Main Content */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        style={styles.scrollView}>
-        {selectedAccount ? (
-          <View>
-            {screen === 'Home' && (
-              <Animated.View
-                style={[
-                  styles.contentContainer,
-                  {
-                    opacity: fadeAnim,
-                    transform: [{translateY: slideAnim}],
-                  },
-                ]}>
-                {/* Wallet Info Card */}
-                <View style={styles.walletCard}>
-                  <AccountInfo
-                    selectedAccount={selectedAccount}
-                    balance={balance}
-                    fetchAndUpdateBalance={fetchAndUpdateBalance}
-                  />
-                </View>
+      <View style={styles.mainContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}>
+          {/* Wallet Card */}
 
-                {/* Main Gaming Section */}
-                <View style={styles.gamingSection}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Join the Pool</Text>
-                    <Text style={styles.sectionSubtitle}>
-                      Experience the thrill of decentralized gaming
-                    </Text>
-                  </View>
-
-                  {/* Lottery Game Card */}
-                  <View style={styles.gameCard}>
-                    <View style={styles.gameHeader}>
-                      <View style={styles.gameIcon}>
-                        <Text style={styles.gameIconText}>🎰</Text>
-                      </View>
-                      <View style={styles.gameInfo}>
-                        <Text style={styles.gameTitle}>Active Pool</Text>
-                        <Text style={styles.gameDescription}>
-                          Join the pool and win big rewards
-                        </Text>
-                      </View>
-                      <View style={styles.gameStatus}>
-                        <Text style={styles.gameStatusText}>ACTIVE</Text>
-                      </View>
-                    </View>
-
-                    <LotteryPoolsComponent />
-                  </View>
-                </View>
-              </Animated.View>
-            )}
-            {screen === 'Pool' && (
-              <Animated.View
-                style={[
-                  styles.contentContainer,
-                  {
-                    opacity: fadeAnim,
-                    transform: [{translateY: slideAnim}],
-                  },
-                ]}>
-                {/* Back Button at top-left */}
-                <View style={styles.header}>
-                  <Button title="← Back" onPress={goBack} />
-                </View>
-                <LotteryPoolInfo />
-              </Animated.View>
-            )}
-          </View>
-        ) : (
+          {/* Tab Content */}
           <Animated.View
             style={[
-              styles.welcomeContainer,
+              styles.contentContainer,
               {
                 opacity: fadeAnim,
                 transform: [{translateY: slideAnim}],
               },
             ]}>
-            <View style={styles.welcomeContent}>
-              <Text style={styles.welcomeIcon}>🚀</Text>
-              <Text style={styles.welcomeTitle}>Welcome to FortuneX</Text>
-              <Text style={styles.welcomeDescription}>
-                Connect your wallet to start playing decentralized games and win
-                amazing prizes on the Solana blockchain.
-              </Text>
-
-              <View style={styles.featuresList}>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>⚡</Text>
-                  <Text style={styles.featureText}>Fast & Secure</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>🎯</Text>
-                  <Text style={styles.featureText}>Fair Gaming</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>💎</Text>
-                  <Text style={styles.featureText}>Real Rewards</Text>
-                </View>
-              </View>
-            </View>
+            {renderTabContent()}
           </Animated.View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      </View>
 
-      {/* Footer/Connection Section */}
-      <View style={styles.footer}>
-        {selectedAccount ? (
-          <></>
-        ) : (
-          <View style={styles.connectionFooter}>
-            <ConnectButton title="🔗 Connect Wallet" />
-            <Text style={styles.footerNote}>
-              Connect your Solana wallet to get started
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <View style={styles.bottomNavContent}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'Home' && styles.activeTab]}
+            onPress={() => handleTabPress('Home')}>
+            <TabIcon name="Home" isActive={activeTab === 'Home'} />
+            <Text
+              style={[
+                styles.tabLabel,
+                activeTab === 'Home' && styles.activeTabLabel,
+              ]}>
+              Home
             </Text>
-          </View>
-        )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'History' && styles.activeTab,
+            ]}
+            onPress={() => handleTabPress('History')}>
+            <TabIcon name="History" isActive={activeTab === 'History'} />
+            <Text
+              style={[
+                styles.tabLabel,
+                activeTab === 'History' && styles.activeTabLabel,
+              ]}>
+              History
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'Tickets' && styles.activeTab,
+            ]}
+            onPress={() => handleTabPress('Tickets')}>
+            <TabIcon name="Tickets" isActive={activeTab === 'Tickets'} />
+            <Text
+              style={[
+                styles.tabLabel,
+                activeTab === 'Tickets' && styles.activeTabLabel,
+              ]}>
+              Tickets
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'Profile' && styles.activeTab,
+            ]}
+            onPress={() => handleTabPress('Profile')}>
+            <TabIcon name="Profile" isActive={activeTab === 'Profile'} />
+            <Text
+              style={[
+                styles.tabLabel,
+                activeTab === 'Profile' && styles.activeTabLabel,
+              ]}>
+              Profile
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -229,253 +327,430 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F23',
+    backgroundColor: '#0A0A0A',
   },
-  backgroundGradient: {
+  backgroundEffects: {
     position: 'absolute',
     width: '100%',
     height: '100%',
+    zIndex: 0,
   },
-  gradientCircle1: {
+  gradientOrb1: {
     position: 'absolute',
     top: -100,
     right: -100,
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    opacity: 0.8,
   },
-  gradientCircle2: {
+  gradientOrb2: {
     position: 'absolute',
-    bottom: -150,
+    top: height * 0.3,
     left: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(139, 69, 19, 0.1)',
+    opacity: 0.6,
+  },
+  gradientOrb3: {
+    position: 'absolute',
+    bottom: -100,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    opacity: 0.7,
   },
   header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1A1A1A',
+    zIndex: 1,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1F1F37',
   },
-  headerContent: {
+  headerLeft: {
     flex: 1,
   },
   appTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 2,
   },
   appSubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#10B981',
+    fontWeight: '500',
   },
-  networkStatus: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1F1F37',
+  },
+  notificationButton: {
+    position: 'relative',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  notificationIcon: {
+    fontSize: 20,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  mainContent: {
+    flex: 1,
+    marginBottom: BOTTOM_NAV_HEIGHT + BOTTOM_SAFE_AREA,
+  },
+  scrollView: {
+    flex: 1,
+    zIndex: 1,
+  },
+  scrollContainer: {
+    paddingBottom: 20,
+  },
+  walletCard: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  homeContent: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  heroSection: {
+    marginBottom: 30,
+  },
+  heroContent: {
+    alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  jackpotContainer: {
+    position: 'relative',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 24,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    overflow: 'hidden',
+  },
+  jackpotGlow: {
+    position: 'absolute',
+    top: -20,
+    left: -20,
+    right: -20,
+    bottom: -20,
+    backgroundColor: '#10B981',
+    borderRadius: 30,
+    opacity: 0.1,
+  },
+  jackpotContent: {
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  jackpotLabel: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  jackpotAmount: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  jackpotSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
     paddingHorizontal: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginHorizontal: 6,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  poolsSection: {
+    marginBottom: 30,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  viewAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '500',
+  },
+  poolsScroll: {
+    flexDirection: 'row',
+  },
+  poolCard: {
+    width: 280,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    padding: 20,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  poolHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  poolType: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2D2D44',
   },
-  networkDot: {
+  poolTypeText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  poolStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#10B981',
     marginRight: 6,
   },
-  networkText: {
+  poolStatusText: {
     fontSize: 12,
     color: '#10B981',
     fontWeight: '600',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 4,
-  },
-  walletCard: {
-    backgroundColor: '#1F1F37',
-    borderRadius: 16,
-    padding: 20,
-    marginVertical: 20,
-    borderWidth: 1,
-    borderColor: '#2D2D44',
-  },
-  gamingSection: {
-    flex: 1,
-  },
-  sectionHeader: {
-    marginBottom: 20,
+  poolPrize: {
     alignItems: 'center',
+    marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 24,
+  poolPrizeAmount: {
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  gameCard: {
-    backgroundColor: '#1F1F37',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#2D2D44',
-  },
-  gameHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  gameIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  gameIconText: {
-    fontSize: 24,
-  },
-  gameInfo: {
-    flex: 1,
-  },
-  gameTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  gameDescription: {
+  poolPrizeLabel: {
     fontSize: 14,
     color: '#9CA3AF',
   },
-  gameStatus: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  gameStatusText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  gameContent: {
-    marginTop: 10,
-  },
-  welcomeContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  welcomeContent: {
-    alignItems: 'center',
-    maxWidth: 350,
-  },
-  welcomeIcon: {
-    fontSize: 80,
+  poolInfo: {
     marginBottom: 20,
   },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  welcomeDescription: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 40,
-  },
-  featuresList: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 20,
-  },
-  featureItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  featureIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#D1D5DB',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#1F1F37',
-  },
-  connectedFooter: {
+  poolInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  footerButton: {
-    backgroundColor: '#374151',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#4B5563',
-  },
-  footerButtonText: {
-    color: '#9CA3AF',
+  poolInfoLabel: {
     fontSize: 14,
+    color: '#9CA3AF',
+  },
+  poolInfoValue: {
+    fontSize: 14,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  connectionFooter: {
+  buyButton: {
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  footerNote: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 10,
-    textAlign: 'center',
+  buyButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
-  content: {
-    marginTop: 60,
+  winnersSection: {
+    marginBottom: 30,
+  },
+  winnersList: {
+    marginTop: 16,
+  },
+  winnerItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  winnerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#10B981',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  winnerInitials: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  winnerInfo: {
     flex: 1,
   },
-  poolText: {
-    fontSize: 20,
+  winnerName: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  winnerTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  winnerAmount: {
+    fontSize: 16,
+    color: '#10B981',
     fontWeight: 'bold',
+  },
+  historySection: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1A1A1A',
+    borderTopWidth: 1,
+    borderTopColor: '#2A2A2A',
+    paddingBottom: BOTTOM_SAFE_AREA,
+    height: BOTTOM_NAV_HEIGHT + BOTTOM_SAFE_AREA,
+    zIndex: 1000,
+  },
+  bottomNavContent: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    justifyContent: 'space-around',
+    height: BOTTOM_NAV_HEIGHT,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  activeTab: {
+    backgroundColor: '#2A2A2A',
+  },
+  tabIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  activeTabIcon: {
+    backgroundColor: '#10B981',
+  },
+  tabIconText: {
+    fontSize: 16,
+    opacity: 0.6,
+  },
+  activeTabIconText: {
+    opacity: 1,
+  },
+  tabLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  activeTabLabel: {
+    color: '#10B981',
+    fontWeight: '600',
   },
 });

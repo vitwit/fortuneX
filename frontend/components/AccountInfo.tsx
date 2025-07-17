@@ -25,46 +25,55 @@ function lamportsToSol(lamports: number): string {
 
 function formatAddress(address: string): string {
   if (address.length <= 8) return address;
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+  return `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
 export default function AccountInfo({ selectedAccount, balance, fetchAndUpdateBalance }: Props) {
   return (
     <View style={styles.container}>
-      {/* Header with Balance */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>💼 {selectedAccount.label || 'Wallet'}</Text>
-          <View style={styles.balanceContainer}>
-            <Text style={styles.balanceAmount}>
-              {balance !== null ? lamportsToSol(balance) : '0.0000'}
-            </Text>
-            <Text style={styles.balanceCurrency}>SOL</Text>
-          </View>
-        </View>
-        <View style={styles.statusIndicator}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>ACTIVE</Text>
+      {/* Main Balance Display */}
+      <View style={styles.balanceSection}>
+        <Text style={styles.balanceLabel}>Wallet Balance</Text>
+        <View style={styles.balanceContainer}>
+          <Text style={styles.balanceAmount}>
+            {balance !== null ? lamportsToSol(balance) : '0.0000'}
+          </Text>
+          <Text style={styles.balanceCurrency}>SOL</Text>
         </View>
       </View>
 
-      {/* Address */}
-      <View style={styles.addressContainer}>
-        <Text style={styles.addressText}>
-          {formatAddress(selectedAccount.address)}
-        </Text>
+      {/* Wallet Info Row */}
+      <View style={styles.walletInfoRow}>
+        <View style={styles.walletDetails}>
+          <View style={styles.walletIcon}>
+            <Text style={styles.walletIconText}>👛</Text>
+          </View>
+          <View style={styles.walletInfo}>
+            <Text style={styles.walletLabel}>
+              {selectedAccount.label || 'Connected Wallet'}
+            </Text>
+            <Text style={styles.walletAddress}>
+              {formatAddress(selectedAccount.publicKey.toBase58())}
+            </Text>
+          </View>
+        </View>
+        
         <TouchableOpacity style={styles.copyButton}>
           <Text style={styles.copyButtonText}>📋</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <RequestAirdropButton
-          selectedAccount={selectedAccount}
-          onAirdropComplete={() => fetchAndUpdateBalance(selectedAccount)}
-        />
-        <DisconnectButton />
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <View style={styles.buttonWrapper}>
+          <RequestAirdropButton
+            selectedAccount={selectedAccount}
+            onAirdropComplete={() => fetchAndUpdateBalance(selectedAccount)}
+          />
+        </View>
+        <View style={styles.buttonWrapper}>
+          <DisconnectButton />
+        </View>
       </View>
     </View>
   );
@@ -73,84 +82,92 @@ export default function AccountInfo({ selectedAccount, balance, fetchAndUpdateBa
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'transparent',
-    borderRadius: 0,
-    padding: 0,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  balanceSection: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+  balanceLabel: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginBottom: 6,
   },
   balanceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   balanceAmount: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#10B981',
-    marginRight: 6,
+    marginRight: 8,
   },
   balanceCurrency: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#10B981',
     fontWeight: '600',
   },
-  statusIndicator: {
+  walletInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  addressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#16213E',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2D2D44',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  addressText: {
+  walletDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
+  },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  walletIconText: {
+    fontSize: 18,
+  },
+  walletInfo: {
+    flex: 1,
+  },
+  walletLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  walletAddress: {
     fontSize: 13,
-    color: '#D1D5DB',
+    color: '#9CA3AF',
     fontFamily: 'monospace',
   },
   copyButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#374151',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4B5563',
   },
   copyButtonText: {
-    fontSize: 14,
+    fontSize: 16,
   },
-  actions: {
-    flexDirection: 'row-reverse',
+  actionButtons: {
+    flexDirection: 'row',
     gap: 12,
+  },
+  buttonWrapper: {
+    flex: 1,
   },
 });
