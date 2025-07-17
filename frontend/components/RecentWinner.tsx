@@ -20,7 +20,6 @@ type ParsedDrawHistory = {
   poolId: bigint;
   winner: PublicKey;
   prizeAmount: bigint;
-  totalParticipants: bigint;
   totalTickets: bigint;
   drawTimestamp: bigint;
   winningTicket: bigint;
@@ -84,7 +83,7 @@ export default function RecentWinner() {
 
         const parsed: ParsedDrawHistory[] = accounts
           .filter(acc => {
-            const expectedSize = 8 + 32 + 8 + 32 + 8 + 8 + 8 + 8 + 8 + 32 + 1;
+            const expectedSize = 8 + 137; // 8 bytes discriminator + 137 bytes struct
             return acc.account.data.length === expectedSize;
           })
           .map(acc => {
@@ -94,12 +93,11 @@ export default function RecentWinner() {
             const poolId = data.readBigUInt64LE(40);
             const winner = new PublicKey(data.slice(48, 80));
             const prizeAmount = data.readBigUInt64LE(80);
-            const totalParticipants = data.readBigUInt64LE(88);
-            const totalTickets = data.readBigUInt64LE(96);
-            const drawTimestamp = data.readBigInt64LE(104);
-            const winningTicket = data.readBigUInt64LE(112);
-            const randomSeed = data.slice(120, 152);
-            const bump = data.readUInt8(152);
+            const totalTickets = data.readBigUInt64LE(88);
+            const drawTimestamp = data.readBigInt64LE(96);
+            const winningTicket = data.readBigUInt64LE(104);
+            const randomSeed = data.slice(112, 144);
+            const bump = data.readUInt8(144);
 
             return {
               pubkey: acc.pubkey,
@@ -107,7 +105,6 @@ export default function RecentWinner() {
               poolId,
               winner,
               prizeAmount,
-              totalParticipants,
               totalTickets,
               drawTimestamp,
               winningTicket,
@@ -263,7 +260,7 @@ export default function RecentWinner() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {winner.totalParticipants.toString()}
+                {winner.totalTickets.toString()}
               </Text>
               <Text style={styles.statLabel}>Players</Text>
             </View>
@@ -479,7 +476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    transform: [{rotate: '15deg'}],
+    transform: [{rotate: '16deg'}],
     zIndex: 10,
   },
   yourWinText: {

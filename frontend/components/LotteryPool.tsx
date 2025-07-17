@@ -28,6 +28,7 @@ import {TransactionInstruction} from '@solana/web3.js';
 import {Transaction} from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import {sha256} from '@noble/hashes/sha256';
+import {USDC_MINT_ADDRESS} from '../util/constants';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -42,13 +43,15 @@ interface LotteryPoolData {
   poolId: number;
   status: PoolStatus;
   prizePool: number;
-  participants: PublicKey[];
-  ticketsSold: number;
+  ticketsSold: PublicKey[];
   drawInterval: number;
   drawTime: number;
   createdAt: number;
   bump: number;
   address: string;
+  ticketPrice: number;
+  maxTickets: number;
+  minTickets: number;
 }
 
 interface GlobalStateData {
@@ -61,12 +64,7 @@ interface GlobalStateData {
   bump: number;
 }
 
-// const GLOBAL_STATE_SEED = 'global_state';
-// const LOTTERY_POOL_SEED = 'lottery_pool';
-// const VAULT_AUTHORITY_SEED = 'vault_authority';
-// const USER_TICKET_SEED = 'user_ticket';
-
-const USDC_MINT = new PublicKey('EuURVxuHfvmb1y5AanMob4PF4DFhi7fn4t6F3kSTjHPz');
+const USDC_MINT = new PublicKey(USDC_MINT_ADDRESS);
 
 export default function LotteryPoolsComponent({
   horizontalView = true,
@@ -98,10 +96,6 @@ export default function LotteryPoolsComponent({
   const LOTTERY_POOL_SEED = Buffer.from('lottery_pool');
   const VAULT_AUTHORITY_SEED = Buffer.from('vault_authority');
   const USER_TICKET_SEED = Buffer.from('user_ticket');
-
-  // TODO: make this dynamic
-  const TICKET_PRICE: number = 10_000_000; // $10 USDC (6 decimals)
-  const TOTAL_TICKETS: number = 5;
 
   // Pulse animation for the lottery icon
   useEffect(() => {
@@ -171,17 +165,23 @@ export default function LotteryPoolsComponent({
       const prizePool = view.getBigUint64(offset, true);
       offset += 8;
 
-      // Parse participants vector
-      const participantsLength = view.getUint32(offset, true);
+      const ticketPrice = view.getBigUint64(offset, true);
+      offset += 8;
+
+      // Parse tickets_sold (Vec<Pubkey>)
+      const ticketsSoldLength = view.getUint32(offset, true);
       offset += 4;
-      const participants: PublicKey[] = [];
-      for (let i = 0; i < participantsLength; i++) {
+      const ticketsSold: PublicKey[] = [];
+      for (let i = 0; i < ticketsSoldLength; i++) {
         const pubkeyBytes = new Uint8Array(data.buffer, offset, 32);
-        participants.push(new PublicKey(pubkeyBytes));
+        ticketsSold.push(new PublicKey(pubkeyBytes));
         offset += 32;
       }
 
-      const ticketsSold = view.getBigUint64(offset, true);
+      const minTickets = view.getBigUint64(offset, true);
+      offset += 8;
+
+      const maxTickets = view.getBigUint64(offset, true);
       offset += 8;
 
       const drawInterval = view.getBigInt64(offset, true);
@@ -199,13 +199,15 @@ export default function LotteryPoolsComponent({
         poolId: Number(poolId),
         status,
         prizePool: Number(prizePool),
-        participants,
-        ticketsSold: Number(ticketsSold),
+        ticketPrice: Number(ticketPrice),
+        ticketsSold,
+        minTickets: Number(minTickets),
+        maxTickets: Number(maxTickets),
         drawInterval: Number(drawInterval),
         drawTime: Number(drawTime),
         createdAt: Number(createdAt),
         bump,
-        address: '', // Will be set by caller
+        address: '', // Will be set later
       };
     } catch (error) {
       console.error('Error parsing pool data:', error);
@@ -430,7 +432,7 @@ export default function LotteryPoolsComponent({
           userTokenAccount,
         );
         const userBalance = tokenAccountInfo.value.amount;
-        const totalCost = quantity * TICKET_PRICE;
+        const totalCost = quantity * selectedPool.ticketPrice;
 
         if (parseInt(userBalance) < totalCost) {
           throw new Error('Insufficient USDC balance for ticket purchase');
@@ -522,7 +524,7 @@ export default function LotteryPoolsComponent({
         'Purchase Successful',
         `Successfully bought ${quantity} ticket${
           quantity > 1 ? 's' : ''
-        } for $${formatUSDC(quantity * TICKET_PRICE)}!`,
+        } for $${formatUSDC(quantity * selectedPool.ticketPrice)}!`,
       );
 
       // Reset and close modal
@@ -543,8 +545,12 @@ export default function LotteryPoolsComponent({
   // Function to increment ticket count
   const incrementTicketCount = () => {
     if (!selectedPool) return;
+
     const currentCount = parseInt(ticketCount) || 0;
-    const remainingTickets = TOTAL_TICKETS - selectedPool.ticketsSold;
+    const soldCount = selectedPool.ticketsSold.length;
+    const remainingTickets = selectedPool.maxTickets - soldCount;
+
+    // Allow user to increment up to the remaining tickets but cap it at 100 for UI safety
     const maxCount = Math.min(remainingTickets, 100);
 
     if (currentCount < maxCount) {
@@ -562,14 +568,17 @@ export default function LotteryPoolsComponent({
 
   // Render pool item
   const renderPoolItem = ({item}: {item: LotteryPoolData}) => {
-    const progress = (item.ticketsSold / TOTAL_TICKETS) * 100;
+    const soldCount = item.ticketsSold.length;
+    const totalTickets = item.maxTickets;
+
+    const progress = (soldCount / totalTickets) * 100;
     const statusColor = getStatusColor(item.status);
     const isActive = item.status === PoolStatus.Active;
-    const remainingTickets = TOTAL_TICKETS - item.ticketsSold;
+    const remainingTickets = totalTickets - soldCount;
     const poolType = getPoolType(item.prizePool);
 
     if (!isActive && showActive) {
-      return null;
+      return <>{renderEmptyComponent()}</>;
     }
 
     return (
@@ -601,7 +610,7 @@ export default function LotteryPoolsComponent({
         <View style={styles.poolPrize}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <Text style={styles.maxPoolAmount}>
-              ${formatUSDC(TICKET_PRICE * TOTAL_TICKETS)}
+              ${formatUSDC(item.ticketPrice * item.maxTickets)}
             </Text>
           </View>
           <Text style={styles.poolPrizeLabel}>Prize Pool</Text>
@@ -611,13 +620,13 @@ export default function LotteryPoolsComponent({
           <View style={styles.poolInfoRow}>
             <Text style={styles.poolInfoLabel}>Ticket Price</Text>
             <Text style={styles.poolInfoValue}>
-              ${formatUSDC(TICKET_PRICE)}
+              ${formatUSDC(item.ticketPrice)}
             </Text>
           </View>
           <View style={styles.poolInfoRow}>
             <Text style={styles.poolInfoLabel}>Tickets Sold</Text>
             <Text style={styles.poolInfoValue}>
-              {item.ticketsSold}/{TOTAL_TICKETS}
+              {item.ticketsSold.length}/{item.maxTickets}
             </Text>
           </View>
           {item.drawTime > 0 && (
@@ -666,10 +675,11 @@ export default function LotteryPoolsComponent({
   const renderBuyTicketModal = (): JSX.Element => {
     if (!selectedPool) return <></>;
 
-    const remainingTickets = TOTAL_TICKETS - selectedPool.ticketsSold;
+    const soldCount = selectedPool.ticketsSold.length;
+    const remainingTickets = selectedPool.maxTickets - soldCount;
     const maxTickets = Math.min(remainingTickets, 100);
     const currentCount = parseInt(ticketCount) || 0;
-    const totalCost = currentCount * TICKET_PRICE;
+    const totalCost = currentCount * selectedPool.ticketPrice;
 
     return (
       <Modal
@@ -689,7 +699,7 @@ export default function LotteryPoolsComponent({
                 Available Tickets: {remainingTickets}
               </Text>
               <Text style={styles.ticketInfoText}>
-                Price per Ticket: ${formatUSDC(TICKET_PRICE)}
+                Price per Ticket: ${formatUSDC(selectedPool.ticketPrice)}
               </Text>
             </View>
 

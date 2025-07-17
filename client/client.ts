@@ -18,7 +18,7 @@ import {
   mintTo,
   createAccount,
 } from "@solana/spl-token";
-import { readFileSync } from "fs";
+import { access, readFileSync } from "fs";
 
 export class FortuneXClient {
   private program: Program<Fortunex>;
@@ -123,7 +123,12 @@ export class FortuneXClient {
     const usdcMint = globalState.usdcMint;
 
     const tx = await this.program.methods
-      .initializePool(new anchor.BN(drawInterval))
+      .initializePool(
+        new anchor.BN(10_000_000),
+        new anchor.BN(5),
+        new anchor.BN(5),
+        new anchor.BN(drawInterval)
+      )
       .accounts({
         globalState: globalStatePda,
         lotteryPool: lotteryPoolPda,
@@ -270,7 +275,7 @@ export class FortuneXClient {
 
     // Create remaining accounts for all participants' token accounts
     const remainingAccounts = await Promise.all(
-      pool.participants.map(async (participant: PublicKey) => {
+      pool.ticketsSold.map(async (participant: PublicKey) => {
         const ata = await getAssociatedTokenAddress(usdcMint, participant);
         return {
           pubkey: ata,
@@ -334,7 +339,7 @@ export class FortuneXClient {
       poolId: pool.poolId.toString(),
       drawInterval: pool.drawInterval.toString(),
       ticketsSold: pool.ticketsSold.toString(),
-      participants: pool.participants.map((p: PublicKey) => p.toBase58()),
+      participants: pool.ticketsSold.map((p: PublicKey) => p.toBase58()),
       createdAt: new Date(pool.createdAt.toNumber() * 1000),
       expiresAt: new Date(expiryTime * 1000),
       isExpired,
@@ -385,7 +390,9 @@ export class FortuneXClient {
       authority,
       amount
     );
-    console.log(`✅ Minted ${amount / 1_000_000} USDC to ${destinationWallet.toBase58()}`);
+    console.log(
+      `✅ Minted ${amount / 1_000_000} USDC to ${destinationWallet.toBase58()}`
+    );
   }
 
   async createTokenAccount(
@@ -426,28 +433,28 @@ async function main() {
   );
 
   try {
-    const usdcMint = new PublicKey("EuURVxuHfvmb1y5AanMob4PF4DFhi7fn4t6F3kSTjHPz");
+    const usdcMint = await client.createUSDCMint(authority);
 
     // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
-    // await client.mintToATA(usdcMint, phantomWalletPubkey, 100_000_000, authority);
+    await client.mintToATA(usdcMint, phantomWalletPubkey, 100_000_000, authority);
 
     // ✅ Initialize platform (uncomment if needed)
-    // await client.initializePlatform(
-    //   authority,
-    //   platformWallet.publicKey,
-    //   usdcMint,
-    //   100
-    // );
+    await client.initializePlatform(
+      authority,
+      platformWallet.publicKey,
+      usdcMint,
+      100
+    );
 
     // ✅ Create lottery pool with 5 minutes expiry
     const poolResult = await client.createLotteryPool(creator, 34000); // 300 seconds = 5 minutes
     // console.log("🎉 Setup complete!");
-    // console.log("Pool ID:", poolResult.poolId);
-    // console.log("Pool PDA:", poolResult.poolPda.toBase58());
+    console.log("Pool ID:", poolResult.poolId);
+    console.log("Pool PDA:", poolResult.poolPda.toBase58());
 
     // ✅ Get pool info
-    // const poolInfo = await client.getPoolInfo(poolResult.poolId);
-    // console.log("📊 Pool Info:", poolInfo);
+    const poolInfo = await client.getPoolInfo(poolResult.poolId);
+    console.log("📊 Pool Info:", poolInfo);
 
     // ✅ Example: Draw winner (uncomment when ready to use)
     // Create platform token account first
@@ -456,7 +463,7 @@ async function main() {
     //   platformWallet.publicKey,
     //   authority
     // );
-    
+
     // // Wait for pool to have participants and expire, then draw
     // const drawResult = await client.drawWinner(
     //   crank,
@@ -464,7 +471,6 @@ async function main() {
     //   platformTokenAccount
     // );
     // console.log("🏆 Draw completed:", drawResult);
-
   } catch (err) {
     console.error("❌ Setup failed:", err);
   }
