@@ -1,1 +1,1 @@
-export const USDC_MINT_ADDRESS = '6AGeaJEmc2ju8PqJR6ZBnJwnaoo4Y7n5MukUanDrrzbW';
+export const USDC_MINT_ADDRESS = '6gHZirTGx23Bne1L7BQkUEHUdyeg8ejZW4Haf8qREgHd';

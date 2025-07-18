@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import {useAuthorization} from './providers/AuthorizationProvider';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -23,15 +24,18 @@ interface LotteryPoolData {
   poolId: number;
   status: PoolStatus;
   prizePool: number;
+  ticketPrice: number;
   ticketsSold: PublicKey[];
+  minTickets: number;
+  maxTickets: number;
   drawInterval: number;
   drawTime: number;
   createdAt: number;
+  winner: PublicKey;
+  commissionBps: number;
+  creator: PublicKey;
   bump: number;
   address: string;
-  ticketPrice: number;
-  maxTickets: number;
-  minTickets: number;
 }
 
 interface PoolInfoComponentProps {
@@ -41,6 +45,12 @@ interface PoolInfoComponentProps {
 
 const {width, height} = Dimensions.get('window');
 
+const shortAddress = (pubkey: PublicKey | undefined): string => {
+  if (!pubkey) return '';
+  const base58 = pubkey.toBase58();
+  return `${base58.slice(0, 4)}...${base58.slice(-4)}`;
+};
+
 export default function PoolInfoComponent({
   poolData,
   onClose,
@@ -48,6 +58,7 @@ export default function PoolInfoComponent({
   const [pulseAnim] = useState(new Animated.Value(1));
   const [slideAnim] = useState(new Animated.Value(height));
   const [now, setNow] = useState(Date.now() / 1000);
+  const {selectedAccount} = useAuthorization();
 
   // Animate component entrance
   useEffect(() => {
@@ -265,6 +276,30 @@ export default function PoolInfoComponent({
             <Text style={styles.progressText}>
               {soldCount} of {totalTickets} tickets sold
             </Text>
+          </View>
+
+          <View style={styles.technicalSection}>
+            <Text style={styles.sectionTitle}>Winner Details</Text>
+            <View style={styles.technicalGrid}>
+              <View style={styles.technicalItem}>
+                <Text style={styles.technicalLabel}>Winner Address</Text>
+                <Text
+                  style={[
+                    styles.technicalValue,
+                    selectedAccount?.publicKey.toBase58() ===
+                      poolData?.winner?.toBase58() && {
+                      color: '#10B981',
+                      fontWeight: 'bold',
+                    },
+                  ]}
+                  numberOfLines={1}>
+                  {selectedAccount?.publicKey.toBase58() ===
+                  poolData?.winner?.toBase58()
+                    ? `${shortAddress(poolData.winner)} (You 🎉)`
+                    : shortAddress(poolData?.winner)}
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Pool Information */}

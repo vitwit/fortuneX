@@ -23,6 +23,7 @@ import { access, readFileSync } from "fs";
 export class FortuneXClient {
   private program: Program<Fortunex>;
   public provider: anchor.Provider;
+  public creatorTokenAccount: anchor.web3.PublicKey;
 
   // Seeds
   private readonly GLOBAL_STATE_SEED = "global_state";
@@ -48,7 +49,7 @@ export class FortuneXClient {
     );
 
     const tx = await this.program.methods
-      .initialize(platformWallet, usdcMint, platformFeePercentage)
+      .initialize(platformWallet, usdcMint, 50, 50)
       .accounts({
         globalState: globalStatePda,
         usdcMint: usdcMint,
@@ -121,6 +122,11 @@ export class FortuneXClient {
       globalStatePda
     );
     const usdcMint = globalState.usdcMint;
+    this.creatorTokenAccount = await this.createTokenAccount(
+      usdcMint,
+      creator.publicKey,
+      creator
+    );
 
     const tx = await this.program.methods
       .initializePool(
@@ -135,6 +141,7 @@ export class FortuneXClient {
         poolTokenAccount,
         vaultAuthority,
         usdcMint,
+        creatorTokenAccount: this.creatorTokenAccount,
         authority: creator.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -294,6 +301,7 @@ export class FortuneXClient {
         poolTokenAccount: poolTokenAccount,
         vaultAuthority: vaultAuthority,
         platformTokenAccount: platformTokenAccount,
+        creatorTokenAccount: this.creatorTokenAccount,
         crank: crank.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -435,10 +443,16 @@ async function main() {
   try {
     const usdcMint = await client.createUSDCMint(authority);
 
-    // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
-    await client.mintToATA(usdcMint, phantomWalletPubkey, 100_000_000, authority);
+    console.log("usdcmint", usdcMint.toBase58());
+    // // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
+    await client.mintToATA(
+      usdcMint,
+      phantomWalletPubkey,
+      100_000_000,
+      authority
+    );
 
-    // ✅ Initialize platform (uncomment if needed)
+    // // ✅ Initialize platform (uncomment if needed)
     await client.initializePlatform(
       authority,
       platformWallet.publicKey,
@@ -446,34 +460,35 @@ async function main() {
       100
     );
 
-    // ✅ Create lottery pool with 5 minutes expiry
-    const poolResult = await client.createLotteryPool(creator, 34000); // 300 seconds = 5 minutes
+    // // ✅ Create lottery pool with 5 minutes expiry
+    const poolResult = await client.createLotteryPool(creator, 100); // 300 seconds = 5 minutes
     // console.log("🎉 Setup complete!");
     console.log("Pool ID:", poolResult.poolId);
     console.log("Pool PDA:", poolResult.poolPda.toBase58());
 
-    // ✅ Get pool info
+    // // ✅ Get pool info
     const poolInfo = await client.getPoolInfo(poolResult.poolId);
     console.log("📊 Pool Info:", poolInfo);
 
     // ✅ Example: Draw winner (uncomment when ready to use)
     // Create platform token account first
-    // const platformTokenAccount = await client.createTokenAccount(
-    //   usdcMint,
-    //   platformWallet.publicKey,
-    //   authority
-    // );
+    const platformTokenAccount = await getAssociatedTokenAddress(
+      usdcMint,
+      authority.publicKey
+    );
+
+    await sleep(120000); // wait for 2 seconds
 
     // // Wait for pool to have participants and expire, then draw
-    // const drawResult = await client.drawWinner(
-    //   crank,
-    //   0,
-    //   platformTokenAccount
-    // );
-    // console.log("🏆 Draw completed:", drawResult);
+    const drawResult = await client.drawWinner(crank, 0, platformTokenAccount);
+    console.log("🏆 Draw completed:", drawResult);
   } catch (err) {
     console.error("❌ Setup failed:", err);
   }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 main().catch(console.error);

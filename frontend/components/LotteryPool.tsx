@@ -44,15 +44,18 @@ interface LotteryPoolData {
   poolId: number;
   status: PoolStatus;
   prizePool: number;
+  ticketPrice: number;
   ticketsSold: PublicKey[];
+  minTickets: number;
+  maxTickets: number;
   drawInterval: number;
   drawTime: number;
   createdAt: number;
+  winner: PublicKey;
+  commissionBps: number;
+  creator: PublicKey;
   bump: number;
   address: string;
-  ticketPrice: number;
-  maxTickets: number;
-  minTickets: number;
 }
 
 interface GlobalStateData {
@@ -160,7 +163,7 @@ export default function LotteryPoolsComponent({
   const parsePoolData = (data: Buffer): LotteryPoolData | null => {
     try {
       const view = new DataView(data.buffer);
-      let offset = 8; // Skip discriminator
+      let offset = 8; // Skip Anchor discriminator
 
       const poolId = view.getBigUint64(offset, true);
       offset += 8;
@@ -174,7 +177,7 @@ export default function LotteryPoolsComponent({
       const ticketPrice = view.getBigUint64(offset, true);
       offset += 8;
 
-      // Parse tickets_sold (Vec<Pubkey>)
+      // tickets_sold (Vec<Pubkey>)
       const ticketsSoldLength = view.getUint32(offset, true);
       offset += 4;
       const ticketsSold: PublicKey[] = [];
@@ -199,7 +202,19 @@ export default function LotteryPoolsComponent({
       const createdAt = view.getBigInt64(offset, true);
       offset += 8;
 
+      const winnerBytes = new Uint8Array(data.buffer, offset, 32);
+      const winner = new PublicKey(winnerBytes);
+      offset += 32;
+
+      const commissionBps = view.getUint16(offset, true);
+      offset += 2;
+
+      const creatorBytes = new Uint8Array(data.buffer, offset, 32);
+      const creator = new PublicKey(creatorBytes);
+      offset += 32;
+
       const bump = view.getUint8(offset);
+      offset += 1;
 
       return {
         poolId: Number(poolId),
@@ -212,8 +227,11 @@ export default function LotteryPoolsComponent({
         drawInterval: Number(drawInterval),
         drawTime: Number(drawTime),
         createdAt: Number(createdAt),
+        winner,
+        commissionBps,
+        creator,
         bump,
-        address: '', // Will be set later
+        address: '', // Will be assigned separately
       };
     } catch (error) {
       console.error('Error parsing pool data:', error);
@@ -240,6 +258,9 @@ export default function LotteryPoolsComponent({
         // Skip platform_fee_bps (2 bytes)
         offset += 2;
 
+        // Skip bonus_pool_fee_bps
+        offset += 2;
+
         const poolsCount = view.getBigUint64(offset, true);
         return Number(poolsCount);
       }
@@ -256,8 +277,9 @@ export default function LotteryPoolsComponent({
     try {
       const poolsCount = await fetchGlobalState();
       const poolsData: LotteryPoolData[] = [];
-
+      console.log('poolscounts....', poolsCount);
       for (let i = 0; i < poolsCount; i++) {
+        console.log('iiiii', i);
         try {
           const poolPDA = getLotteryPoolPDA(i);
           const accountInfo = await connection.getAccountInfo(poolPDA);
@@ -818,10 +840,14 @@ export default function LotteryPoolsComponent({
           : pools.map(item => renderPoolItem({item}))}
       </ScrollView>
 
-      {pools.length === 0 ||
-      pools.filter(pool => pool.status === PoolStatus.Active).length === 0
-        ? renderEmptyComponent()
-        : null}
+      {isMainScreen ? (
+        <>
+          {pools.length === 0 ||
+          pools.filter(pool => pool.status === PoolStatus.Active).length === 0
+            ? renderEmptyComponent()
+            : null}
+        </>
+      ) : null}
 
       {/* Buy Ticket Modal */}
       {renderBuyTicketModal()}
@@ -954,7 +980,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8
+    marginTop: 8,
   },
   emptyContainer: {
     alignItems: 'center',
