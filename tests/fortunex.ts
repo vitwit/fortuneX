@@ -131,7 +131,7 @@ describe("fortunex", () => {
     // Create lottery pool
     const drawInterval = 30; // 24 hours
     const tx = await program.methods
-      .initializePool(new anchor.BN(10_000_000), new anchor.BN(5), new anchor.BN(5), new anchor.BN(drawInterval))
+      .initializePool(new anchor.BN(10_000_000), new anchor.BN(4), new anchor.BN(5), new anchor.BN(drawInterval))
       .accounts({
         globalState: globalStatePda,
         lotteryPool: lotteryPoolPda,
@@ -242,7 +242,6 @@ describe("fortunex", () => {
         `🔍 Participant ${i + 1} balance before: ${balance.value.uiAmount} USDC`
       );
 
-      let pool = await program.account.lotteryPool.fetch(lotteryPoolPda);
       let [userTicketPda] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(USER_TICKET_SEED),
@@ -289,7 +288,68 @@ describe("fortunex", () => {
       console.log(`Participant ${i + 1}: ${balance.value.uiAmount} USDC`);
     }
 
-    // === 🎯 Step 3: Draw winner ===
+    let balance = await provider.connection.getTokenAccountBalance(
+      platformTokenAccount
+    );
+    console.log(`Platform Token Account Balance: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      poolTokenAccount
+    );
+    console.log(`Pool Token Account Balance: ${balance.value.uiAmount} USDC`);
+
+    // === Step 3: Cancel Ticket ===
+    let cancelIndex = 3;
+    let participant = participants[cancelIndex];
+
+    let [participantTicketPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(USER_TICKET_SEED),
+        participant.publicKey.toBuffer(),
+        new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId
+    );
+
+    let participantTicket = await program.account.userTicket.fetch(participantTicketPda);
+    let ticketNumber = participantTicket.tickets[0].ticketNumber
+
+    let cancelTx = await program.methods
+      .cancelTicket(new anchor.BN(poolId), ticketNumber)
+      .accounts({
+        globalState: globalStatePda,
+        lotteryPool: lotteryPoolPda,
+        userTicket: participantTicketPda,
+        userTokenAccount: participantTokenAccounts[cancelIndex],
+        poolTokenAccount: poolTokenAccount,
+        vaultAuthority: vaultAuthority,
+        platformTokenAccount: platformTokenAccount,
+        user: participant.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([participant])
+      .rpc();
+
+    console.log("\n🎉 Cancel ticket transaction signature:", cancelTx);
+
+    console.log("\n🔍 USDC Balances after cancel ticket:");
+    balance = await provider.connection.getTokenAccountBalance(
+      participantTokenAccounts[cancelIndex]
+    );
+    console.log(`Participant ${cancelIndex + 1} Token Account Balance: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      platformTokenAccount
+    );
+    console.log(`Platform Token Account Balance: ${balance.value.uiAmount} USDC`);
+
+    balance = await provider.connection.getTokenAccountBalance(
+      poolTokenAccount
+    );
+    console.log(`Pool Token Account Balance: ${balance.value.uiAmount} USDC`);
+
+    // === 🎯 Step 4: Draw winner ===
     const [drawHistoryPda] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("draw_history"),
@@ -324,7 +384,7 @@ describe("fortunex", () => {
       program.programId
     );
 
-    let balance = await provider.connection.getTokenAccountBalance(
+    balance = await provider.connection.getTokenAccountBalance(
       creatorTokenAccount
     );
     console.log(`Creator Token Account Balance before draw: ${balance.value.uiAmount} USDC`);
@@ -359,7 +419,7 @@ describe("fortunex", () => {
 
     console.log("\n🎉 Draw transaction signature:", drawTx);
 
-    // === 🧾 Step 4: Show balances after draw ===
+    // === 🧾 Step 5: Show balances after draw ===
     console.log("\n🔍 USDC Balances after draw:");
     for (let i = 0; i < 4; i++) {
       const balance = await provider.connection.getTokenAccountBalance(

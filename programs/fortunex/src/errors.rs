@@ -10,6 +10,8 @@ pub enum FortuneXError {
     PoolFull,
     #[msg("Insufficient funds")]
     InsufficientFunds,
+    #[msg("User does not own this ticket")]
+    TicketNotFound,
     #[msg("Invalid ticket amount")]
     InvalidTicketAmount,
     #[msg("Pool already drawing")]

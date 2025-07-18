@@ -100,7 +100,7 @@ pub fn draw_winner<'info>(
     // Calculate platform fee from prize pool using basis points (bps)
     // bps = 100 bps means 1% platform fee, 1000 bps means 10%, 10,000 bps means 100%
     // Example: if platform_fee_bps = 100 (1%), and total_prize = 100_000_000 (100 USDC),
-    // platform_fee = (100_000_000 * 100) / 10000 = 10_000_000 (10 USDC)
+    // platform_fee = (100_000_000 * 100) / 10000 = 1_000_000 (1 USDC)
     let platform_fee = (total_prize * global_state.platform_fee_bps as u64) / 10000;
     let mut winner_prize = total_prize - platform_fee;
     // deduct bonus pool fee

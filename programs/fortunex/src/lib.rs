@@ -56,6 +56,11 @@ pub mod fortunex {
         handlers::buy_ticket(ctx, pool_id, quantity)
     }
 
+    // Cancel a ticket from the lottery
+    pub fn cancel_ticket(ctx: Context<CancelTicket>, pool_id: u64, ticket_number: u64) -> Result<()> {
+        handlers::cancel_ticket(ctx, pool_id, ticket_number)
+    }
+
     // Draw the winner
     pub fn draw_winner<'info>(
         ctx: Context<'_, '_, '_, 'info, DrawWinner<'info>>,
