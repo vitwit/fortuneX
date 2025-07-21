@@ -1,5 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Animated, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {TOKEN_PROGRAM_ID} from '@solana/spl-token';
+import {PublicKey} from '@solana/web3.js';
 import ConnectButton from './ConnectButton';
 import AccountInfo from './AccountInfo';
 import {
@@ -7,22 +9,70 @@ import {
   Account,
 } from '../components/providers/AuthorizationProvider';
 import {useConnection} from './providers/ConnectionProvider';
+import {USDC_MINT_ADDRESS} from '../util/constants';
 
 const Profile = () => {
   const {connection} = useConnection();
   const [balance, setBalance] = useState<number | null>(null);
+  const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
 
   const {selectedAccount} = useAuthorization();
-  const fetchAndUpdateBalance = useCallback(
+
+  const fetchUsdcBalance = useCallback(
     async (account: Account) => {
-      console.log('Fetching balance for: ' + account.publicKey);
-      const fetchedBalance = await connection.getBalance(account.publicKey);
-      console.log('Balance fetched: ' + fetchedBalance);
-      setBalance(fetchedBalance);
+      try {
+        const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
+
+        // Get all token accounts for this wallet
+        const tokenAccounts = await connection.getTokenAccountsByOwner(
+          account.publicKey,
+          {
+            mint: usdcMint,
+          },
+        );
+
+        if (tokenAccounts.value.length === 0) {
+          console.log('No USDC token account found');
+          setUsdcBalance(0);
+          return;
+        }
+
+        // Get the balance of the first (usually only) USDC token account
+        const tokenAccountInfo = await connection.getTokenAccountBalance(
+          tokenAccounts.value[0].pubkey,
+        );
+
+        const usdcAmount = parseInt(tokenAccountInfo.value.amount);
+        console.log('USDC balance fetched: ' + usdcAmount);
+        setUsdcBalance(usdcAmount);
+      } catch (error) {
+        console.error('Error fetching USDC balance:', error);
+        setUsdcBalance(0);
+      }
     },
     [connection],
+  );
+
+  const fetchAndUpdateBalance = useCallback(
+    async (account: Account) => {
+      console.log('Fetching SOL balance for: ' + account.publicKey);
+      try {
+        // Fetch SOL balance
+        const fetchedBalance = await connection.getBalance(account.publicKey);
+        console.log('SOL balance fetched: ' + fetchedBalance);
+        setBalance(fetchedBalance);
+
+        // Fetch USDC balance
+        await fetchUsdcBalance(account);
+      } catch (error) {
+        console.error('Error fetching balances:', error);
+        setBalance(0);
+        setUsdcBalance(0);
+      }
+    },
+    [connection, fetchUsdcBalance],
   );
 
   useEffect(() => {
@@ -67,6 +117,7 @@ const Profile = () => {
               <AccountInfo
                 selectedAccount={selectedAccount}
                 balance={balance}
+                usdcBalance={usdcBalance}
                 fetchAndUpdateBalance={fetchAndUpdateBalance}
               />
             </Animated.View>

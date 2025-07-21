@@ -13,6 +13,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
+import {SYSTEM_PROGRAM_ADDRESS} from '../util/constants';
 
 type ParsedDrawHistory = {
   pubkey: PublicKey;
@@ -111,7 +112,8 @@ export default function RecentWinner() {
               randomSeed,
               bump,
             };
-          });
+          })
+          .filter(draw => isValidWinner(draw.winner));
 
         const sortedWinners = parsed
           .sort((a, b) => Number(b.drawTimestamp) - Number(a.drawTimestamp))
@@ -151,6 +153,11 @@ export default function RecentWinner() {
   const getWinnerEmoji = (): string => {
     const emojis = ['🎉', '🎊', '🎯', '🔥'];
     return emojis[Math.floor(Math.random() * emojis.length)];
+  };
+
+  const isValidWinner = (winner: PublicKey): boolean => {
+    const winnerAddress = winner.toBase58();
+    return winnerAddress !== SYSTEM_PROGRAM_ADDRESS && winnerAddress !== '';
   };
 
   const getWinnerColors = (isCurrentUser: boolean) => {

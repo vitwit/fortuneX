@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -69,6 +69,17 @@ interface GlobalStateData {
 }
 
 const USDC_MINT = new PublicKey(USDC_MINT_ADDRESS);
+
+const countUserTickets = (
+  array: PublicKey[],
+  userPubkey: PublicKey | undefined,
+): number => {
+  if (!userPubkey) {
+    return 0;
+  }
+  const targetBase58 = userPubkey.toBase58();
+  return array.filter(pubkey => pubkey.toBase58() === targetBase58).length;
+};
 
 export default function LotteryPoolsComponent({
   horizontalView = true,
@@ -605,6 +616,11 @@ export default function LotteryPoolsComponent({
     const remainingTickets = totalTickets - soldCount;
     const poolType = getPoolType(item.prizePool);
 
+    const userTicketCount = countUserTickets(
+      item.ticketsSold,
+      selectedAccount?.publicKey,
+    );
+
     if (!isActive && showActive) {
       return null;
     }
@@ -615,6 +631,7 @@ export default function LotteryPoolsComponent({
           <View style={[styles.poolType, {backgroundColor: poolType.color}]}>
             <Text style={styles.poolTypeText}>{poolType.type}</Text>
           </View>
+
           <View style={styles.poolStatus}>
             {isActive ? (
               <Animated.View
@@ -665,6 +682,23 @@ export default function LotteryPoolsComponent({
               </Text>
             </View>
           )}
+
+          <View style={{alignItems: 'flex-end'}}>
+            {userTicketCount > 0 ? (
+              <View style={styles.ticketBadge}>
+                <Text style={styles.ticketBadgeText}>
+                  You bought: {userTicketCount} tickets
+                </Text>
+              </View>
+            ) : (
+              // Reserve space to keep height consistent
+              <View style={[styles.ticketBadge, {opacity: 0}]}>
+                <Text style={styles.ticketBadgeText}>
+                  You bought: 0 tickets
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Progress Bar */}
@@ -699,11 +733,9 @@ export default function LotteryPoolsComponent({
     );
   };
 
-  const renderEmptyComponent = (): JSX.Element => (
+  const renderEmptyComponent = (message?: string) => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>
-        {loading ? 'Loading pools...' : 'No pools available'}
-      </Text>
+      <Text style={styles.emptyText}>{message || 'Nothing to display'}</Text>
     </View>
   );
 
@@ -830,24 +862,29 @@ export default function LotteryPoolsComponent({
 
   return (
     <View style={styles.container}>
-      {/* Pools List */}
-      <ScrollView
-        horizontal={horizontalView}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.poolsScrollContainer}>
-        {pools.length === 0
-          ? renderEmptyComponent()
-          : pools.map(item => renderPoolItem({item}))}
-      </ScrollView>
+      {/* Pools List or General Empty State */}
+      {pools.length === 0 ? (
+        <View style={[styles.emptyWrapper, {marginLeft: 44}]}>
+          {renderEmptyComponent('No pools available right now.')}
+        </View>
+      ) : (
+        <ScrollView
+          horizontal={horizontalView}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.poolsScrollContainer}>
+          {pools.map(item => renderPoolItem({item}))}
+        </ScrollView>
+      )}
 
-      {isMainScreen ? (
-        <>
-          {pools.length === 0 ||
-          pools.filter(pool => pool.status === PoolStatus.Active).length === 0
-            ? renderEmptyComponent()
-            : null}
-        </>
-      ) : null}
+      {/* Main Screen - No Active Pools Message */}
+      {isMainScreen &&
+        pools.length > 0 &&
+        pools.filter(pool => pool.status === PoolStatus.Active).length ===
+          0 && (
+          <View style={styles.emptyWrapper}>
+            {renderEmptyComponent('No active pools currently.')}
+          </View>
+        )}
 
       {/* Buy Ticket Modal */}
       {renderBuyTicketModal()}
@@ -982,17 +1019,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    width: 280,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
+  // emptyContainer: {
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  //   paddingVertical: 60,
+  //   width: 280,
+  // },
+  // emptyText: {
+  //   fontSize: 16,
+  //   color: '#9CA3AF',
+  //   textAlign: 'center',
+  // },
   // Modal Styles
   modalOverlay: {
     flex: 1,
@@ -1138,6 +1175,49 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyWrapper: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+
+  emptyContainer: {
+    backgroundColor: '#1e1e1e',
+    padding: 16,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+
+  emptyText: {
+    color: '#aaa',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginVertical: 10,
+    marginLeft: 16,
+  },
+  ticketBadge: {
+    backgroundColor: '#DCFCE7', // Light green
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
+    maxWidth: '100%',
+  },
+
+  ticketBadgeText: {
+    color: '#065F46', // Dark green text
+    fontSize: 12,
     fontWeight: '600',
   },
 });

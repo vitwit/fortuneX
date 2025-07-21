@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import {StyleSheet, View, Text, TouchableOpacity} from 'react-native';
+import {LAMPORTS_PER_SOL, PublicKey} from '@solana/web3.js';
 
 import DisconnectButton from './DisconnectButton';
 import RequestAirdropButton from './RequestAirdropButton';
+import {formatNumber, formatToSOL, formatWithKM} from '../util/utils';
 
 interface Account {
   address: string;
@@ -14,31 +15,41 @@ interface Account {
 type Props = {
   selectedAccount: Account;
   balance: number | null;
+  usdcBalance: number | null;
   fetchAndUpdateBalance: (account: Account) => void;
 };
-
-function lamportsToSol(lamports: number): string {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
-    lamports / LAMPORTS_PER_SOL
-  );
-}
 
 function formatAddress(address: string): string {
   if (address.length <= 8) return address;
   return `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-export default function AccountInfo({ selectedAccount, balance, fetchAndUpdateBalance }: Props) {
+export default function AccountInfo({
+  selectedAccount,
+  balance,
+  usdcBalance,
+  fetchAndUpdateBalance,
+}: Props) {
   return (
     <View style={styles.container}>
-      {/* Main Balance Display */}
+      {/* Balance Display Section */}
       <View style={styles.balanceSection}>
-        <Text style={styles.balanceLabel}>Wallet Balance</Text>
+        <Text style={styles.balanceLabel}>Wallet Balances</Text>
+
+        {/* SOL Balance */}
         <View style={styles.balanceContainer}>
           <Text style={styles.balanceAmount}>
-            {balance !== null ? lamportsToSol(balance) : '0.0000'}
+            {balance !== null ? formatToSOL(balance, 4) : '0.0000'}
           </Text>
           <Text style={styles.balanceCurrency}>SOL</Text>
+        </View>
+
+        {/* USDC Balance */}
+        <View style={styles.balanceContainer}>
+          <Text style={styles.balanceAmountSecondary}>
+            {usdcBalance !== null ? formatNumber(usdcBalance) : '0.00'}
+          </Text>
+          <Text style={styles.balanceCurrencySecondary}>USDC</Text>
         </View>
       </View>
 
@@ -57,7 +68,7 @@ export default function AccountInfo({ selectedAccount, balance, fetchAndUpdateBa
             </Text>
           </View>
         </View>
-        
+
         <TouchableOpacity style={styles.copyButton}>
           <Text style={styles.copyButtonText}>📋</Text>
         </TouchableOpacity>
@@ -90,11 +101,12 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 14,
     color: '#9CA3AF',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   balanceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    marginBottom: 6,
   },
   balanceAmount: {
     fontSize: 32,
@@ -105,6 +117,17 @@ const styles = StyleSheet.create({
   balanceCurrency: {
     fontSize: 16,
     color: '#10B981',
+    fontWeight: '600',
+  },
+  balanceAmountSecondary: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginRight: 8,
+  },
+  balanceCurrencySecondary: {
+    fontSize: 14,
+    color: '#3B82F6',
     fontWeight: '600',
   },
   walletInfoRow: {

@@ -51,6 +51,10 @@ const shortAddress = (pubkey: PublicKey | undefined): string => {
   return `${base58.slice(0, 4)}...${base58.slice(-4)}`;
 };
 
+const isDefaultPubkey = (pubkey: PublicKey): boolean => {
+  return pubkey.toBase58() === '11111111111111111111111111111111';
+};
+
 export default function PoolInfoComponent({
   poolData,
   onClose,
@@ -293,10 +297,12 @@ export default function PoolInfoComponent({
                     },
                   ]}
                   numberOfLines={1}>
-                  {selectedAccount?.publicKey.toBase58() ===
-                  poolData?.winner?.toBase58()
-                    ? `${shortAddress(poolData.winner)} (You 🎉)`
-                    : shortAddress(poolData?.winner)}
+                  {poolData?.winner && !isDefaultPubkey(poolData.winner)
+                    ? selectedAccount?.publicKey.toBase58() ===
+                      poolData?.winner?.toBase58()
+                      ? `${shortAddress(poolData.winner)} (You 🎉)`
+                      : poolData.winner.toBase58()
+                    : 'Not yet drawn'}
                 </Text>
               </View>
             </View>
@@ -390,12 +396,12 @@ export default function PoolInfoComponent({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    // backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
   content: {
     flex: 1,
     backgroundColor: '#0A0A0A',
-    marginTop: 50,
+    marginTop: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
