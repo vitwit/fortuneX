@@ -9,7 +9,7 @@ import {
   Account,
 } from '../components/providers/AuthorizationProvider';
 import {useConnection} from './providers/ConnectionProvider';
-import {USDC_MINT_ADDRESS} from '../util/constants';
+import {USDC_MINT} from '../util/constants';
 
 const Profile = () => {
   const {connection} = useConnection();
@@ -23,13 +23,11 @@ const Profile = () => {
   const fetchUsdcBalance = useCallback(
     async (account: Account) => {
       try {
-        const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
-
         // Get all token accounts for this wallet
         const tokenAccounts = await connection.getTokenAccountsByOwner(
           account.publicKey,
           {
-            mint: usdcMint,
+            mint: USDC_MINT,
           },
         );
 

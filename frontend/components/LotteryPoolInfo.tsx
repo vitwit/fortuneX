@@ -13,10 +13,8 @@ import {useConnection} from '../components/providers/ConnectionProvider';
 import {PublicKey} from '@solana/web3.js';
 import {Buffer} from 'buffer';
 import {useNavigation} from './providers/NavigationProvider';
+import {PROGRAM_ID} from '../util/constants';
 
-const PROGRAM_ID = new PublicKey(
-  'HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu',
-);
 const LOTTERY_POOL_SEED = Buffer.from('lottery_pool');
 const TICKET_PRICE = 10_000_000;
 

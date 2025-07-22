@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import ConnectButton from './ConnectButton';
 import RaffleTicket from './Ticket';
+import TicketDetailsModal from './TicketDetailsModal'; // Import the new modal
+import { PROGRAM_ID } from '../util/constants';
 
 type TicketDetails = {
   ticket_number: bigint;
@@ -28,9 +30,12 @@ type ParsedUserTicket = {
   tickets: TicketDetails[];
 };
 
-const PROGRAM_ID = new PublicKey(
-  'HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu',
-);
+type SelectedTicketInfo = {
+  ticketNumber: string;
+  poolId: string;
+  amountPaid: string;
+  timestamp: string;
+} | null;
 
 export default function UserTicketsComponent() {
   const {connection} = useConnection();
@@ -39,89 +44,93 @@ export default function UserTicketsComponent() {
   const [loading, setLoading] = useState<boolean>(true);
   const [userTickets, setUserTickets] = useState<ParsedUserTicket[]>([]);
   const [expandedPools, setExpandedPools] = useState<Set<string>>(new Set());
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [selectedTicket, setSelectedTicket] =
+    useState<SelectedTicketInfo>(null);
 
-  useEffect(() => {
+  const fetchUserTickets = async () => {
     if (!selectedAccount?.publicKey) return;
 
-    const fetchUserTickets = async () => {
-      setLoading(true);
-      try {
-        const accounts = await connection.getProgramAccounts(PROGRAM_ID, {
-          filters: [
-            {
-              memcmp: {
-                offset: 8,
-                bytes: selectedAccount.publicKey.toBase58(),
-              },
+    setLoading(true);
+    try {
+      const accounts = await connection.getProgramAccounts(PROGRAM_ID, {
+        filters: [
+          {
+            memcmp: {
+              offset: 8,
+              bytes: selectedAccount.publicKey.toBase58(),
             },
-          ],
-        });
+          },
+        ],
+      });
 
-        const parsed: ParsedUserTicket[] = accounts.map(acc => {
-          const data = acc.account.data;
-          const user = new PublicKey(data.slice(8, 40));
-          const pool = new PublicKey(data.slice(40, 72));
-          const poolId = data.readBigUInt64LE(72);
+      const parsed: ParsedUserTicket[] = accounts.map(acc => {
+        const data = acc.account.data;
+        const user = new PublicKey(data.slice(8, 40));
+        const pool = new PublicKey(data.slice(40, 72));
+        const poolId = data.readBigUInt64LE(72);
 
-          const ticketVectorOffset = 80;
-          const ticketCount = data.readUInt32LE(ticketVectorOffset);
-          const tickets: TicketDetails[] = [];
+        const ticketVectorOffset = 80;
+        const ticketCount = data.readUInt32LE(ticketVectorOffset);
+        const tickets: TicketDetails[] = [];
 
-          let cursor = ticketVectorOffset + 4;
-          for (let i = 0; i < ticketCount; i++) {
-            const ticket_number = data.readBigUInt64LE(cursor);
-            const amount_paid = data.readBigUInt64LE(cursor + 8);
-            const timestamp = data.readBigInt64LE(cursor + 16);
-            tickets.push({ticket_number, amount_paid, timestamp});
-            cursor += 24;
-          }
+        let cursor = ticketVectorOffset + 4;
+        for (let i = 0; i < ticketCount; i++) {
+          const ticket_number = data.readBigUInt64LE(cursor);
+          const amount_paid = data.readBigUInt64LE(cursor + 8);
+          const timestamp = data.readBigInt64LE(cursor + 16);
+          tickets.push({ticket_number, amount_paid, timestamp});
+          cursor += 24;
+        }
 
-          const bump = data.readUInt8(data.length - 1);
+        const bump = data.readUInt8(data.length - 1);
 
-          return {
-            pubkey: acc.pubkey,
-            user,
-            pool,
-            poolId,
-            bump,
-            tickets,
-          };
-        });
+        return {
+          pubkey: acc.pubkey,
+          user,
+          pool,
+          poolId,
+          bump,
+          tickets,
+        };
+      });
 
-        // Calculate totals
-        let totalTicketCount = 0;
-        let totalAmountSpent = 0;
+      setUserTickets(parsed);
+    } catch (err) {
+      console.error('Failed to fetch user tickets:', err);
+      Alert.alert('Error', 'Failed to fetch user tickets');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        parsed.forEach(userTicket => {
-          totalTicketCount += userTicket.tickets.length;
-          userTicket.tickets.forEach(ticket => {
-            totalAmountSpent += Number(ticket.amount_paid) / 1e6;
-          });
-        });
-
-        setUserTickets(parsed);
-      } catch (err) {
-        console.error('Failed to fetch user tickets:', err);
-        Alert.alert('Error', 'Failed to fetch user tickets');
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchUserTickets();
   }, [connection, selectedAccount]);
 
-  const handleTicketPress = (ticketNumber: string, poolId: string) => {
-    Alert.alert(
-      'Ticket Details',
-      `Ticket Number: ${ticketNumber}\nPool ID: ${poolId}`,
-      [
-        {
-          text: 'OK',
-          style: 'default',
-        },
-      ],
-    );
+  const handleTicketPress = (
+    ticketNumber: string,
+    poolId: string,
+    amountPaid: string,
+    timestamp: string,
+  ) => {
+    setSelectedTicket({
+      ticketNumber,
+      poolId,
+      amountPaid,
+      timestamp,
+    });
+    setModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setModalVisible(false);
+    setSelectedTicket(null);
+  };
+
+  const handleTicketCancelled = () => {
+    // Refresh the tickets list after cancellation
+    fetchUserTickets();
   };
 
   const formatAmount = (amount: bigint): string => {
@@ -169,6 +178,8 @@ export default function UserTicketsComponent() {
                 handleTicketPress(
                   ticket.ticket_number.toString(),
                   userTicket.poolId.toString(),
+                  formatAmount(ticket.amount_paid),
+                  ticket.timestamp.toString(),
                 )
               }
             />
@@ -234,6 +245,17 @@ export default function UserTicketsComponent() {
         contentContainerStyle={styles.scrollContent}>
         {renderTicketsByPool()}
       </ScrollView>
+
+      {/* Ticket Details Modal */}
+      <TicketDetailsModal
+        visible={modalVisible}
+        onClose={handleModalClose}
+        ticketNumber={selectedTicket?.ticketNumber || ''}
+        poolId={selectedTicket?.poolId || ''}
+        amountPaid={selectedTicket?.amountPaid || ''}
+        timestamp={selectedTicket?.timestamp || ''}
+        onTicketCancelled={handleTicketCancelled}
+      />
     </View>
   );
 }

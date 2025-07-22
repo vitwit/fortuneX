@@ -28,7 +28,7 @@ import {TransactionInstruction} from '@solana/web3.js';
 import {Transaction} from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import {sha256} from '@noble/hashes/sha256';
-import {USDC_MINT_ADDRESS} from '../util/constants';
+import {PROGRAM_ID, USDC_MINT} from '../util/constants';
 import PoolInfoComponent from './PoolInfoComponent';
 
 // Pool Status Enum
@@ -67,8 +67,6 @@ interface GlobalStateData {
   bump: number;
 }
 
-const USDC_MINT = new PublicKey(USDC_MINT_ADDRESS);
-
 const countUserTickets = (
   array: PublicKey[],
   userPubkey: PublicKey | undefined,
@@ -104,11 +102,6 @@ export default function LotteryPoolsComponent({
     useState<LotteryPoolData | null>(null);
 
   const [pulseAnim] = useState(new Animated.Value(1.2));
-
-  // Updated program ID
-  const PROGRAM_ID = new PublicKey(
-    'HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu',
-  );
 
   // Seeds
   const GLOBAL_STATE_SEED = Buffer.from('global_state');
@@ -287,9 +280,7 @@ export default function LotteryPoolsComponent({
     try {
       const poolsCount = await fetchGlobalState();
       const poolsData: LotteryPoolData[] = [];
-      console.log('poolscounts....', poolsCount);
       for (let i = 0; i < poolsCount; i++) {
-        console.log('iiiii', i);
         try {
           const poolPDA = getLotteryPoolPDA(i);
           const accountInfo = await connection.getAccountInfo(poolPDA);
@@ -331,8 +322,6 @@ export default function LotteryPoolsComponent({
         return 'DRAWING';
       case PoolStatus.Completed:
         return 'COMPLETED';
-      case PoolStatus.Cancelled:
-        return 'CANCELLED';
       default:
         return 'UNKNOWN';
     }
@@ -347,8 +336,6 @@ export default function LotteryPoolsComponent({
         return '#F59E0B';
       case PoolStatus.Completed:
         return '#6B7280';
-      case PoolStatus.Cancelled:
-        return '#EF4444';
       default:
         return '#6B7280';
     }

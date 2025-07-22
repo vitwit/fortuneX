@@ -46,7 +46,6 @@ export default function MainScreen() {
 
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
-      console.log('Fetching balance for: ' + account.publicKey);
       const fetchedBalance = await connection.getBalance(account.publicKey);
       console.log('Balance fetched: ' + fetchedBalance);
       setBalance(fetchedBalance);

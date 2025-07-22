@@ -461,7 +461,7 @@ async function main() {
     );
 
     // // ✅ Create lottery pool with 5 minutes expiry
-    const poolResult = await client.createLotteryPool(creator, 100); // 300 seconds = 5 minutes
+    const poolResult = await client.createLotteryPool(creator, 3000); // 300 seconds = 5 minutes
     // console.log("🎉 Setup complete!");
     console.log("Pool ID:", poolResult.poolId);
     console.log("Pool PDA:", poolResult.poolPda.toBase58());
@@ -477,11 +477,11 @@ async function main() {
       authority.publicKey
     );
 
-    await sleep(110000); // wait for 2 seconds
+    // await sleep(110000); // wait for 2 seconds
 
     // // Wait for pool to have participants and expire, then draw
-    const drawResult = await client.drawWinner(crank, 0, platformTokenAccount);
-    console.log("🏆 Draw completed:", drawResult);
+    // const drawResult = await client.drawWinner(crank, 0, platformTokenAccount);
+    // console.log("🏆 Draw completed:", drawResult);
   } catch (err) {
     console.error("❌ Setup failed:", err);
   }

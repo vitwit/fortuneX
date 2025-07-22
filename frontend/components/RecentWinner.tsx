@@ -13,7 +13,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import {SYSTEM_PROGRAM_ADDRESS} from '../util/constants';
+import {PROGRAM_ID, SYSTEM_PROGRAM_ADDRESS} from '../util/constants';
 
 type ParsedDrawHistory = {
   pubkey: PublicKey;
@@ -27,12 +27,6 @@ type ParsedDrawHistory = {
   randomSeed: Buffer;
   bump: number;
 };
-
-const PROGRAM_ID = new PublicKey(
-  'HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu',
-);
-
-const {width} = Dimensions.get('window');
 
 export default function RecentWinner() {
   const {connection} = useConnection();
