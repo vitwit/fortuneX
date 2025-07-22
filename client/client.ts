@@ -437,7 +437,7 @@ async function main() {
   const crank = authority; // Using authority as crank for simplicity
 
   const phantomWalletPubkey = new PublicKey(
-    "52Egn3j4NcoShEBaFAz5PGc6rzaTGrE3BG7dUwaUZZrH"
+    "52Egn3j4NcoShEBaFAz5PGc6rzaTGrE3BG7dUwaUZZrH" // Mobile wallet address
   );
 
   try {
@@ -477,7 +477,7 @@ async function main() {
       authority.publicKey
     );
 
-    await sleep(120000); // wait for 2 seconds
+    await sleep(110000); // wait for 2 seconds
 
     // // Wait for pool to have participants and expire, then draw
     const drawResult = await client.drawWinner(crank, 0, platformTokenAccount);

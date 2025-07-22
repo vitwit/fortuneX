@@ -117,7 +117,6 @@ export default function MainScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Pool Cards */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

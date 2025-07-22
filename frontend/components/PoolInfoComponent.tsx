@@ -16,7 +16,6 @@ enum PoolStatus {
   Active = 0,
   Drawing = 1,
   Completed = 2,
-  Cancelled = 3,
 }
 
 // Type definitions
@@ -113,8 +112,6 @@ export default function PoolInfoComponent({
         return 'DRAWING';
       case PoolStatus.Completed:
         return 'COMPLETED';
-      case PoolStatus.Cancelled:
-        return 'CANCELLED';
       default:
         return 'UNKNOWN';
     }
@@ -129,8 +126,6 @@ export default function PoolInfoComponent({
         return '#F59E0B';
       case PoolStatus.Completed:
         return '#6B7280';
-      case PoolStatus.Cancelled:
-        return '#EF4444';
       default:
         return '#6B7280';
     }

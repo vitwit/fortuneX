@@ -36,7 +36,6 @@ enum PoolStatus {
   Active = 0,
   Drawing = 1,
   Completed = 2,
-  Cancelled = 3,
 }
 
 // Type definitions
@@ -722,13 +721,12 @@ export default function LotteryPoolsComponent({
             <Text style={styles.buyButtonText}>Buy Tickets</Text>
           </TouchableOpacity>
         )}
-        {!isMainScreen ? (
-          <TouchableOpacity
-            style={styles.viewMoreButton}
-            onPress={() => setCurrentPoolInfo(item)}>
-            <Text style={styles.buyButtonText}>View More</Text>
-          </TouchableOpacity>
-        ) : null}
+
+        <TouchableOpacity
+          style={styles.viewMoreButton}
+          onPress={() => setCurrentPoolInfo(item)}>
+          <Text style={styles.buyButtonText}>View More</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -851,14 +849,16 @@ export default function LotteryPoolsComponent({
     return () => clearInterval(interval);
   }, []);
 
-  if (currentPoolInfo) {
-    return (
-      <PoolInfoComponent
-        poolData={currentPoolInfo}
-        onClose={() => setCurrentPoolInfo(null)}
-      />
-    );
-  }
+  // if (currentPoolInfo) {
+  //   return (
+  //     <Modal style={{}}>
+  //       <PoolInfoComponent
+  //         poolData={currentPoolInfo}
+  //         onClose={() => setCurrentPoolInfo(null)}
+  //       />
+  //     </Modal>
+  //   );
+  // }
 
   return (
     <View style={styles.container}>
@@ -888,6 +888,23 @@ export default function LotteryPoolsComponent({
 
       {/* Buy Ticket Modal */}
       {renderBuyTicketModal()}
+
+      {currentPoolInfo ? (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={true}
+          onRequestClose={() => setCurrentPoolInfo(null)}>
+          <View style={styles.modalOverlay}>
+            <View>
+              <PoolInfoComponent
+                poolData={currentPoolInfo}
+                onClose={() => setCurrentPoolInfo(null)}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }
