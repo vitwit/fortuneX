@@ -23,7 +23,6 @@ pub struct CancelTicket<'info> {
 
     #[account(
         mut,
-        close = user, // return lamports to user
         seeds = [
             USER_TICKET_SEED,
             user.key().as_ref(),
