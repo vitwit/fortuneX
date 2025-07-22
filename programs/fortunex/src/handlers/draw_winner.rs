@@ -44,7 +44,7 @@ pub fn draw_winner<'info>(
     // Generate random seed using clock and pool data
     let random_seed = {
         let mut seed = [0u8; 32];
-        let clock_bytes = clock.slot.to_le_bytes();
+        let clock_bytes = clock.unix_timestamp.to_le_bytes();
         let pool_bytes = pool_id.to_le_bytes();
         let slot_bytes = clock.slot.to_le_bytes();
 
