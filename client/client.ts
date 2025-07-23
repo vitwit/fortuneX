@@ -21,7 +21,7 @@ import {
 import { access, readFileSync } from "fs";
 
 export class FortuneXClient {
-  private program: Program<Fortunex>;
+  public program: Program<Fortunex>;
   public provider: anchor.Provider;
   public creatorTokenAccount: anchor.web3.PublicKey;
 
@@ -122,11 +122,12 @@ export class FortuneXClient {
       globalStatePda
     );
     const usdcMint = globalState.usdcMint;
-    this.creatorTokenAccount = await this.createTokenAccount(
+    // if (!this.creatorTokenAccount) {
+    this.creatorTokenAccount = await getAssociatedTokenAddress(
       usdcMint,
       creator.publicKey,
-      creator
     );
+    // }
 
     const tx = await this.program.methods
       .initializePool(
@@ -233,8 +234,7 @@ export class FortuneXClient {
 
   async drawWinner(
     crank: Keypair,
-    poolId: number,
-    platformTokenAccount: PublicKey
+    poolId: number
   ): Promise<{ txSignature: string; drawHistory: any }> {
     const [globalStatePda] = PublicKey.findProgramAddressSync(
       [Buffer.from(this.GLOBAL_STATE_SEED)],
@@ -279,6 +279,8 @@ export class FortuneXClient {
       globalStatePda
     );
     const usdcMint = globalState.usdcMint;
+    const platformTokenAccount = await getAssociatedTokenAddress(usdcMint, globalState.platformWallet);
+    const creatorTokenAccount = await getAssociatedTokenAddress(usdcMint, pool.creator);
 
     // Create remaining accounts for all participants' token accounts
     const remainingAccounts = await Promise.all(
@@ -301,7 +303,7 @@ export class FortuneXClient {
         poolTokenAccount: poolTokenAccount,
         vaultAuthority: vaultAuthority,
         platformTokenAccount: platformTokenAccount,
-        creatorTokenAccount: this.creatorTokenAccount,
+        creatorTokenAccount: creatorTokenAccount,
         crank: crank.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -345,13 +347,14 @@ export class FortuneXClient {
 
     return {
       poolId: pool.poolId.toString(),
-      drawInterval: pool.drawInterval.toString(),
+      drawInterval: pool.drawInterval.toNumber(),
       ticketsSold: pool.ticketsSold.toString(),
       participants: pool.ticketsSold.map((p: PublicKey) => p.toBase58()),
       createdAt: new Date(pool.createdAt.toNumber() * 1000),
       expiresAt: new Date(expiryTime * 1000),
       isExpired,
       timeRemaining: Math.max(0, expiryTime - currentTime),
+      status: pool.status,
     };
   }
 
@@ -444,7 +447,7 @@ async function main() {
     const usdcMint = await client.createUSDCMint(authority);
 
     console.log("usdcmint", usdcMint.toBase58());
-    // // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
+    // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
     await client.mintToATA(
       usdcMint,
       phantomWalletPubkey,
@@ -452,7 +455,14 @@ async function main() {
       authority
     );
 
-    // // ✅ Initialize platform (uncomment if needed)
+    await client.mintToATA(
+      usdcMint,
+      creator.publicKey,
+      100_000_000,
+      authority
+    );
+
+    // ✅ Initialize platform (uncomment if needed)
     await client.initializePlatform(
       authority,
       platformWallet.publicKey,
@@ -461,34 +471,23 @@ async function main() {
     );
 
     // // ✅ Create lottery pool with 5 minutes expiry
-    const poolResult = await client.createLotteryPool(creator, 3000); // 300 seconds = 5 minutes
+    const poolResult = await client.createLotteryPool(creator, 120); // 300 seconds = 5 minutes
     // console.log("🎉 Setup complete!");
     console.log("Pool ID:", poolResult.poolId);
     console.log("Pool PDA:", poolResult.poolPda.toBase58());
+    await client.createLotteryPool(creator, 120);
 
     // // ✅ Get pool info
     const poolInfo = await client.getPoolInfo(poolResult.poolId);
     console.log("📊 Pool Info:", poolInfo);
 
-    // ✅ Example: Draw winner (uncomment when ready to use)
-    // Create platform token account first
-    const platformTokenAccount = await getAssociatedTokenAddress(
-      usdcMint,
-      authority.publicKey
-    );
-
-    // await sleep(110000); // wait for 2 seconds
-
-    // // Wait for pool to have participants and expire, then draw
-    // const drawResult = await client.drawWinner(crank, 0, platformTokenAccount);
-    // console.log("🏆 Draw completed:", drawResult);
+    const _ = await client.buyTicket(creator, poolResult.poolId, 5);
   } catch (err) {
     console.error("❌ Setup failed:", err);
   }
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// This ensures main() only runs if the file is executed directly (not imported)
+if (require.main === module) {
+  main().catch(console.error);
 }
-
-main().catch(console.error);

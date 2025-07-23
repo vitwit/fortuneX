@@ -21,7 +21,7 @@ pub struct DrawWinner<'info> {
     pub lottery_pool: Account<'info, LotteryPool>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = crank,
         space = 8 + DrawHistory::INIT_SPACE,
         seeds = [DRAW_HISTORY_SEED, &pool_id.to_le_bytes()],
