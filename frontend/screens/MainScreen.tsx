@@ -200,12 +200,12 @@ export default function MainScreen() {
             <Text style={styles.appSubtitle}>A Millionaire Daily</Text>
           </View>
 
-          <View style={styles.headerRight}>
+          {/* <View style={styles.headerRight}>
             <TouchableOpacity style={styles.notificationButton}>
               <Text style={styles.notificationIcon}>🔔</Text>
               <View style={styles.notificationBadge} />
             </TouchableOpacity>
-          </View>
+          </View> */}
         </View>
       </Animated.View>
 
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1A1A1A',
+    borderBottomColor: '#2a2a2a',
     zIndex: 1,
   },
   headerContent: {

@@ -28,6 +28,7 @@ import {useAuthorization} from './providers/AuthorizationProvider';
 import {sha256} from '@noble/hashes/sha256';
 import {Buffer} from 'buffer';
 import {PROGRAM_ID, USDC_MINT} from '../util/constants';
+import {useToast} from './providers/ToastProvider';
 
 interface TicketDetailsModalProps {
   visible: boolean;
@@ -57,6 +58,7 @@ export default function TicketDetailsModal({
   const {connection} = useConnection();
   const {selectedAccount, authorizeSession} = useAuthorization();
   const [cancelling, setCancelling] = useState(false);
+  const toast = useToast();
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(Number(timestamp) * 1000);
@@ -280,10 +282,15 @@ export default function TicketDetailsModal({
                 BigInt(ticketNumber),
               );
 
-              alertAndLog(
-                'Ticket Cancelled',
-                `Successfully cancelled ticket #${ticketNumber}. Refund of $${amountPaid} has been processed.`,
-              );
+              // alertAndLog(
+              //   'Ticket Cancelled',
+              //   `Successfully cancelled ticket #${ticketNumber}. Refund of $${amountPaid} has been processed.`,
+              // );
+
+              toast.show({
+                message: `Successfully cancelled ticket #${ticketNumber}. Refund of $${amountPaid} has been processed.`,
+                type: 'success',
+              });
 
               // Close modal and trigger refresh
               onClose();

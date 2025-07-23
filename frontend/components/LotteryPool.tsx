@@ -30,6 +30,7 @@ import * as anchor from '@coral-xyz/anchor';
 import {sha256} from '@noble/hashes/sha256';
 import {PROGRAM_ID, USDC_MINT} from '../util/constants';
 import PoolInfoComponent from './PoolInfoComponent';
+import {useToast} from './providers/ToastProvider';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -100,6 +101,8 @@ export default function LotteryPoolsComponent({
   const [showPoolInfo, setShowPoolInfo] = useState(false);
   const [currentPoolInfo, setCurrentPoolInfo] =
     useState<LotteryPoolData | null>(null);
+
+  const toast = useToast();
 
   const [pulseAnim] = useState(new Animated.Value(1.2));
 
@@ -545,12 +548,19 @@ export default function LotteryPoolsComponent({
         quantity,
       );
 
-      alertAndLog(
-        'Purchase Successful',
-        `Successfully bought ${quantity} ticket${
+      // alertAndLog(
+      //   'Purchase Successful',
+      //   `Successfully bought ${quantity} ticket${
+      //     quantity > 1 ? 's' : ''
+      //   } for $${formatUSDC(quantity * selectedPool.ticketPrice)}!`,
+      // );
+
+      toast.show({
+        message: `Successfully bought ${quantity} ticket${
           quantity > 1 ? 's' : ''
         } for $${formatUSDC(quantity * selectedPool.ticketPrice)}!`,
-      );
+        type: 'success',
+      });
 
       // Reset and close modal
       setTicketCount('1');

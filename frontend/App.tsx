@@ -18,6 +18,7 @@ if (typeof global.TextDecoder === 'undefined') {
 
 import MainScreen from './screens/MainScreen';
 import {NavigationProvider} from './components/providers/NavigationProvider';
+import {ToastProvider} from './components/providers/ToastProvider';
 
 export default function App() {
   return (
@@ -26,9 +27,11 @@ export default function App() {
       endpoint={'http://10.0.2.2:8899'}>
       <AuthorizationProvider>
         <NavigationProvider>
-          <SafeAreaView style={styles.shell}>
-            <MainScreen />
-          </SafeAreaView>
+          <ToastProvider>
+            <SafeAreaView style={styles.shell}>
+              <MainScreen />
+            </SafeAreaView>
+          </ToastProvider>
         </NavigationProvider>
       </AuthorizationProvider>
     </ConnectionProvider>
