@@ -862,7 +862,7 @@ export default function LotteryPoolsComponent({
       {/* Pools List or General Empty State */}
       {pools.length === 0 ? (
         <View style={[styles.emptyWrapper, {marginLeft: 44}]}>
-          {renderEmptyComponent('No pools available right now.')}
+          {renderEmptyComponent('New pools coming soon.')}
         </View>
       ) : (
         <ScrollView
@@ -879,7 +879,7 @@ export default function LotteryPoolsComponent({
         pools.filter(pool => pool.status === PoolStatus.Active).length ===
           0 && (
           <View style={styles.emptyWrapper}>
-            {renderEmptyComponent('No active pools currently.')}
+            {renderEmptyComponent('New pools coming soon.')}
           </View>
         )}
 

@@ -7,3 +7,5 @@ export const USDC_MINT = new PublicKey(
   'BFjAENkz5WcLUCKMo6Gr5N7uS244ZqWGoRryyh62pjFu',
 );
 export const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111';
+export const RPC_URL = 'http://10.0.2.2:8899';
+export const AIRDROP_SERVICE_URL = 'http://10.0.2.2:3000';

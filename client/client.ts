@@ -19,6 +19,7 @@ import {
   createAccount,
 } from "@solana/spl-token";
 import { access, readFileSync } from "fs";
+import express from "express";
 
 export class FortuneXClient {
   public program: Program<Fortunex>;
@@ -125,7 +126,7 @@ export class FortuneXClient {
     // if (!this.creatorTokenAccount) {
     this.creatorTokenAccount = await getAssociatedTokenAddress(
       usdcMint,
-      creator.publicKey,
+      creator.publicKey
     );
     // }
 
@@ -279,8 +280,14 @@ export class FortuneXClient {
       globalStatePda
     );
     const usdcMint = globalState.usdcMint;
-    const platformTokenAccount = await getAssociatedTokenAddress(usdcMint, globalState.platformWallet);
-    const creatorTokenAccount = await getAssociatedTokenAddress(usdcMint, pool.creator);
+    const platformTokenAccount = await getAssociatedTokenAddress(
+      usdcMint,
+      globalState.platformWallet
+    );
+    const creatorTokenAccount = await getAssociatedTokenAddress(
+      usdcMint,
+      pool.creator
+    );
 
     // Create remaining accounts for all participants' token accounts
     const remainingAccounts = await Promise.all(
@@ -420,6 +427,48 @@ export class FortuneXClient {
     console.log(`✅ Token account created: ${tokenAccount.toBase58()}`);
     return tokenAccount;
   }
+
+  // Express API setup
+  setupAirdropAPI(usdcMint: PublicKey, authority: Keypair) {
+    const app = express();
+    const PORT = process.env.PORT || 3000;
+
+    app.use(express.json());
+
+    app.get("/airdrop/:walletAddress", async (req, res) => {
+      try {
+        const { walletAddress } = req.params;
+        const userWallet = new PublicKey(walletAddress);
+
+        await this.mintToATA(
+          usdcMint,
+          userWallet,
+          100_000_000, // 200 USDC
+          authority
+        );
+
+        res.json({
+          success: true,
+          message: `100 USDC airdropped to ${walletAddress}`,
+          amount: "100 USDC",
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Airdrop API running on port ${PORT}`);
+      console.log(
+        `📡 Endpoint: http://localhost:${PORT}/airdrop/:walletAddress`
+      );
+    });
+
+    return app;
+  }
 }
 
 // ------------------------
@@ -455,12 +504,7 @@ async function main() {
       authority
     );
 
-    await client.mintToATA(
-      usdcMint,
-      creator.publicKey,
-      100_000_000,
-      authority
-    );
+    await client.mintToATA(usdcMint, creator.publicKey, 100_000_000, authority);
 
     // ✅ Initialize platform (uncomment if needed)
     await client.initializePlatform(
@@ -482,6 +526,9 @@ async function main() {
     console.log("📊 Pool Info:", poolInfo);
 
     const _ = await client.buyTicket(creator, poolResult.poolId, 5);
+
+    // 🚀 Start the airdrop API
+    client.setupAirdropAPI(usdcMint, authority);
   } catch (err) {
     console.error("❌ Setup failed:", err);
   }

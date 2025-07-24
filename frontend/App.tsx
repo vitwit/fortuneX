@@ -1,8 +1,4 @@
-import {
-  ConnectionProvider,
-  RPC_ENDPOINT,
-} from './components/providers/ConnectionProvider';
-import {clusterApiUrl} from '@solana/web3.js';
+import {ConnectionProvider} from './components/providers/ConnectionProvider';
 import React from 'react';
 import {SafeAreaView, StyleSheet, Text} from 'react-native';
 import {AuthorizationProvider} from './components/providers/AuthorizationProvider';
@@ -19,12 +15,11 @@ if (typeof global.TextDecoder === 'undefined') {
 import MainScreen from './screens/MainScreen';
 import {NavigationProvider} from './components/providers/NavigationProvider';
 import {ToastProvider} from './components/providers/ToastProvider';
+import {RPC_URL} from './util/constants';
 
 export default function App() {
   return (
-    <ConnectionProvider
-      config={{commitment: 'processed'}}
-      endpoint={'http://10.0.2.2:8899'}>
+    <ConnectionProvider config={{commitment: 'processed'}} endpoint={RPC_URL}>
       <AuthorizationProvider>
         <NavigationProvider>
           <ToastProvider>
