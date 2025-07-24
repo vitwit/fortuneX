@@ -21,7 +21,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'frontend' do
+target 'FortuneX' do
   config = use_native_modules!
 
   # Flags change depending on the env values.
@@ -43,7 +43,7 @@ target 'frontend' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'frontendTests' do
+  target 'FortuneXTests' do
     inherit! :complete
     # Pods for testing
   end
