@@ -69,6 +69,8 @@ pub struct LotteryPool {
     pub commission_bps: u16, // Commission in basis points (100 bps = 1%)
     pub creator: Pubkey,    // Creator of the pool
     pub bump: u8,
+    #[max_len(100)]
+    pub cancelled_tickets: Vec<u64> // list of cancelled tickets in pool
 }
 
 impl LotteryPool {

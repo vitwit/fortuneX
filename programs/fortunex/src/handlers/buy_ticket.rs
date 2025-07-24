@@ -50,8 +50,11 @@ pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Resul
 
     // update user ticket details
     for _i in 0..quantity {
+        let popped_ticket = lottery_pool.cancelled_tickets.pop();
+        let next_ticket_number = popped_ticket.unwrap_or(lottery_pool.tickets_sold.len() as u64);
+
         let new_ticket = TicketDetails {
-            ticket_number: lottery_pool.tickets_sold.len() as u64,
+            ticket_number: next_ticket_number,
             amount_paid: lottery_pool.ticket_price,
             timestamp: clock.unix_timestamp,
         };
