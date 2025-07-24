@@ -4,8 +4,8 @@ export const PROGRAM_ID = new PublicKey(
   'HD5X9GyjdqEMLyjP5QsLaKAweor6KQrcqCejf3NXwxpu',
 );
 export const USDC_MINT = new PublicKey(
-  'BFjAENkz5WcLUCKMo6Gr5N7uS244ZqWGoRryyh62pjFu',
+  '9bs4v1fCTXSKkB4t39cq85VUKLnRjCkhzCaLzoWraNrW',
 );
 export const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111';
-export const RPC_URL = 'http://10.0.2.2:8899';
-export const AIRDROP_SERVICE_URL = 'http://10.0.2.2:3000';
+export const RPC_URL = 'https://vv7mcklb-8899.inc1.devtunnels.ms';
+export const AIRDROP_SERVICE_URL = 'https://vv7mcklb-3000.inc1.devtunnels.ms';

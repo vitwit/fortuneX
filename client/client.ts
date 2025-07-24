@@ -460,7 +460,7 @@ export class FortuneXClient {
       }
     });
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Airdrop API running on port ${PORT}`);
       console.log(
         `📡 Endpoint: http://localhost:${PORT}/airdrop/:walletAddress`
@@ -515,7 +515,7 @@ async function main() {
     );
 
     // // ✅ Create lottery pool with 5 minutes expiry
-    const poolResult = await client.createLotteryPool(creator, 120); // 300 seconds = 5 minutes
+    const poolResult = await client.createLotteryPool(creator, 300); // 300 seconds = 5 minutes
     // console.log("🎉 Setup complete!");
     console.log("Pool ID:", poolResult.poolId);
     console.log("Pool PDA:", poolResult.poolPda.toBase58());
@@ -525,7 +525,7 @@ async function main() {
     const poolInfo = await client.getPoolInfo(poolResult.poolId);
     console.log("📊 Pool Info:", poolInfo);
 
-    const _ = await client.buyTicket(creator, poolResult.poolId, 5);
+    // const _ = await client.buyTicket(creator, poolResult.poolId, 5);
 
     // 🚀 Start the airdrop API
     client.setupAirdropAPI(usdcMint, authority);
