@@ -15,9 +15,11 @@ const Profile = () => {
   const {connection} = useConnection();
   const [balance, setBalance] = useState<number | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
+  const [isLoadingSOL, setIsLoadingSOL] = useState(false);
+  const [isLoadingUSDC, setIsLoadingUSDC] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
-  const {globalState} = useGlobalState();
+  const {globalState, refreshGlobalState} = useGlobalState();
 
   const {selectedAccount} = useAuthorization();
 
@@ -26,6 +28,7 @@ const Profile = () => {
       if (!globalState?.usdcMint) {
         return;
       }
+      setIsLoadingUSDC(true);
       try {
         // Get all token accounts for this wallet
         const tokenAccounts = await connection.getTokenAccountsByOwner(
@@ -52,6 +55,8 @@ const Profile = () => {
       } catch (error) {
         console.error('Error fetching USDC balance:', error);
         setUsdcBalance(0);
+      } finally {
+        setIsLoadingUSDC(false);
       }
     },
     [connection, globalState?.usdcMint],
@@ -60,6 +65,7 @@ const Profile = () => {
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
       console.log('Fetching SOL balance for: ' + account.publicKey);
+      setIsLoadingSOL(true);
       try {
         // Fetch SOL balance
         const fetchedBalance = await connection.getBalance(account.publicKey);
@@ -72,10 +78,18 @@ const Profile = () => {
         console.error('Error fetching balances:', error);
         setBalance(0);
         setUsdcBalance(0);
+      } finally {
+        setIsLoadingSOL(false);
       }
     },
     [connection, fetchUsdcBalance],
   );
+
+  useEffect(() => {
+    if (!globalState) {
+      refreshGlobalState();
+    }
+  }, [globalState]);
 
   useEffect(() => {
     if (!selectedAccount) {
@@ -121,6 +135,8 @@ const Profile = () => {
                 balance={balance}
                 usdcBalance={usdcBalance}
                 fetchAndUpdateBalance={fetchAndUpdateBalance}
+                isLoadingSOL={isLoadingSOL}
+                isLoadingUSDC={isLoadingUSDC}
               />
             </Animated.View>
           )}

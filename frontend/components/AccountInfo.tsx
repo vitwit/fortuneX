@@ -1,5 +1,5 @@
-import React, {useState} from 'react';
-import {StyleSheet, View, Text, TouchableOpacity} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {StyleSheet, View, Text, TouchableOpacity, Animated} from 'react-native';
 import {LAMPORTS_PER_SOL, PublicKey} from '@solana/web3.js';
 
 import DisconnectButton from './DisconnectButton';
@@ -19,6 +19,8 @@ type Props = {
   balance: number | null;
   usdcBalance: number | null;
   fetchAndUpdateBalance: (account: Account) => void;
+  isLoadingSOL: boolean;
+  isLoadingUSDC: boolean;
 };
 
 function formatAddress(address: string): string {
@@ -31,6 +33,8 @@ export default function AccountInfo({
   balance,
   usdcBalance,
   fetchAndUpdateBalance,
+  isLoadingSOL,
+  isLoadingUSDC,
 }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -50,10 +54,18 @@ export default function AccountInfo({
         {/* SOL Balance Row */}
         <View style={styles.tokenRow}>
           <View style={styles.tokenInfo}>
-            <Text style={styles.balanceAmount}>
-              {balance !== null ? formatToSOL(balance, 4) : '0.0000'}
-            </Text>
-            <Text style={styles.balanceCurrency}>SOL</Text>
+            {isLoadingSOL ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.balanceAmount}>
+                  {balance !== null ? formatToSOL(balance, 4) : '0.0000'}
+                </Text>
+                <Text style={styles.balanceCurrency}>SOL</Text>
+              </>
+            )}
           </View>
           <RequestAirdropButton
             selectedAccount={selectedAccount}
@@ -64,10 +76,18 @@ export default function AccountInfo({
         {/* USDC Balance Row */}
         <View style={styles.tokenRow}>
           <View style={styles.tokenInfo}>
-            <Text style={styles.balanceAmountSecondary}>
-              {usdcBalance !== null ? formatNumber(usdcBalance) : '0.00'}
-            </Text>
-            <Text style={styles.balanceCurrencySecondary}>USDC</Text>
+            {isLoadingUSDC ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingTextSecondary}>Loading...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.balanceAmountSecondary}>
+                  {usdcBalance !== null ? formatNumber(usdcBalance) : '0.00'}
+                </Text>
+                <Text style={styles.balanceCurrencySecondary}>USDC</Text>
+              </>
+            )}
           </View>
           <RequestUSDCAirdropButton
             selectedAccount={selectedAccount}
@@ -221,5 +241,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 6,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#10B981',
+    opacity: 0.7,
+  },
+  loadingTextSecondary: {
+    fontSize: 14,
+    color: '#3B82F6',
+    opacity: 0.7,
   },
 });

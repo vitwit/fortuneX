@@ -32,6 +32,7 @@ import {PROGRAM_ID} from '../util/constants';
 import PoolInfoComponent from './PoolInfoComponent';
 import {useToast} from './providers/ToastProvider';
 import {useGlobalState} from './providers/NavigationProvider';
+import LoadingIndicator from './LoadingIndicator';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -103,7 +104,7 @@ export default function LotteryPoolsComponent({
   const [currentPoolInfo, setCurrentPoolInfo] =
     useState<LotteryPoolData | null>(null);
 
-  const {globalState} = useGlobalState();
+  const {globalState, refreshGlobalState} = useGlobalState();
   const USDC_MINT = globalState?.usdcMint;
 
   const toast = useToast();
@@ -135,6 +136,12 @@ export default function LotteryPoolsComponent({
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim]);
+
+  useEffect(() => {
+    if (!globalState) {
+      refreshGlobalState();
+    }
+  }, [globalState]);
 
   // Function to get global state PDA
   const getGlobalStatePDA = (): PublicKey => {
@@ -887,23 +894,22 @@ export default function LotteryPoolsComponent({
     return () => clearInterval(interval);
   }, []);
 
-  // if (currentPoolInfo) {
-  //   return (
-  //     <Modal style={{}}>
-  //       <PoolInfoComponent
-  //         poolData={currentPoolInfo}
-  //         onClose={() => setCurrentPoolInfo(null)}
-  //       />
-  //     </Modal>
-  //   );
-  // }
-
   return (
     <View style={styles.container}>
       {/* Pools List or General Empty State */}
-      {pools.length === 0 ? (
+      {loading ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginLeft: isMainScreen ? 100 : undefined,
+          }}>
+          <LoadingIndicator text="Fetching pools..." />
+        </View>
+      ) : pools.length === 0 ? (
         <View style={[styles.emptyWrapper, {marginLeft: 44}]}>
-          {renderEmptyComponent('New pools coming soon.')}
+          {renderEmptyComponent('New pools coming soon...!')}
         </View>
       ) : (
         <ScrollView
