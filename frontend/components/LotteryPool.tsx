@@ -16,7 +16,7 @@ import {
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {useConnection} from './providers/ConnectionProvider';
 import {alertAndLog} from '../util/alertAndLog';
-import {PublicKey, SystemProgram} from '@solana/web3.js';
+import {Connection, PublicKey, SystemProgram} from '@solana/web3.js';
 import {Buffer} from 'buffer';
 import ConnectButton from './ConnectButton';
 import {getAssociatedTokenAddress, TOKEN_PROGRAM_ID} from '@solana/spl-token';
@@ -28,9 +28,10 @@ import {TransactionInstruction} from '@solana/web3.js';
 import {Transaction} from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import {sha256} from '@noble/hashes/sha256';
-import {PROGRAM_ID, USDC_MINT} from '../util/constants';
+import {PROGRAM_ID} from '../util/constants';
 import PoolInfoComponent from './PoolInfoComponent';
 import {useToast} from './providers/ToastProvider';
+import {useGlobalState} from './providers/NavigationProvider';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -101,6 +102,9 @@ export default function LotteryPoolsComponent({
   const [showPoolInfo, setShowPoolInfo] = useState(false);
   const [currentPoolInfo, setCurrentPoolInfo] =
     useState<LotteryPoolData | null>(null);
+
+  const {globalState} = useGlobalState();
+  const USDC_MINT = globalState?.usdcMint;
 
   const toast = useToast();
 
@@ -410,6 +414,11 @@ export default function LotteryPoolsComponent({
         return;
       }
 
+      if (!USDC_MINT) {
+        Alert.alert('Failed to fetch global state');
+        return;
+      }
+
       return await transact(async (wallet: Web3MobileWallet) => {
         const [authorizationResult, latestBlockhash] = await Promise.all([
           authorizeSession(wallet),
@@ -519,13 +528,41 @@ export default function LotteryPoolsComponent({
         const txid = await connection.sendRawTransaction(
           signedTx[0].serialize(),
         );
-        await connection.confirmTransaction(txid, 'confirmed');
+        // await connection.confirmTransaction(txid, 'confirmed');
+        await waitForConfirmation(connection, txid, 30000);
 
         return signedTx[0];
       });
     },
     [authorizeSession, connection, selectedPool],
   );
+
+  async function waitForConfirmation(
+    connection: Connection,
+    txid: string,
+    timeout: number = 30000, // 30 seconds
+  ): Promise<void> {
+    const start = Date.now();
+    let status: any = null;
+
+    while (Date.now() - start < timeout) {
+      console.log('polling...');
+      try {
+        status = await connection.getSignatureStatus(txid);
+        const confirmation = status?.value?.confirmationStatus;
+
+        if (confirmation === 'confirmed' || confirmation === 'finalized') {
+          return;
+        }
+      } catch (e) {
+        console.warn('Error polling transaction status', e);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Poll every 1s
+    }
+
+    throw new Error('Transaction confirmation timed out');
+  }
 
   // Function to handle confirm buy
   const handleConfirmBuy = async () => {
@@ -659,6 +696,10 @@ export default function LotteryPoolsComponent({
 
         <View style={styles.poolInfo}>
           <View style={styles.poolInfoRow}>
+            <Text style={styles.poolInfoLabel}>Pool ID</Text>
+            <Text style={styles.poolInfoValue}>#{item.poolId}</Text>
+          </View>
+          <View style={styles.poolInfoRow}>
             <Text style={styles.poolInfoLabel}>Ticket Price</Text>
             <Text style={styles.poolInfoValue}>
               ${formatUSDC(item.ticketPrice)}
@@ -670,7 +711,7 @@ export default function LotteryPoolsComponent({
               {item.ticketsSold.length}/{item.maxTickets}
             </Text>
           </View>
-          {item.drawTime > 0 && (
+          {item.drawTime - now > 0 && (
             <View style={styles.poolInfoRow}>
               <Text style={styles.poolInfoLabel}>Ends In</Text>
               <Text style={styles.poolInfoValue}>

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {StyleSheet, View, Text, TouchableOpacity} from 'react-native';
 import {LAMPORTS_PER_SOL, PublicKey} from '@solana/web3.js';
 
 import DisconnectButton from './DisconnectButton';
 import RequestAirdropButton from './RequestAirdropButton';
 import {formatNumber, formatToSOL, formatWithKM} from '../util/utils';
+import RequestUSDCAirdropButton from './RequestUSDCAirdropButton';
+import Clipboard from '@react-native-community/clipboard';
 
 interface Account {
   address: string;
@@ -30,30 +32,51 @@ export default function AccountInfo({
   usdcBalance,
   fetchAndUpdateBalance,
 }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    Clipboard.setString(selectedAccount.publicKey.toBase58());
+    setCopied(true);
+
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <View style={styles.container}>
-      {/* Balance Display Section */}
+      {/* Token Balances Section */}
       <View style={styles.balanceSection}>
         <Text style={styles.balanceLabel}>Wallet Balances</Text>
 
-        {/* SOL Balance */}
-        <View style={styles.balanceContainer}>
-          <Text style={styles.balanceAmount}>
-            {balance !== null ? formatToSOL(balance, 4) : '0.0000'}
-          </Text>
-          <Text style={styles.balanceCurrency}>SOL</Text>
+        {/* SOL Balance Row */}
+        <View style={styles.tokenRow}>
+          <View style={styles.tokenInfo}>
+            <Text style={styles.balanceAmount}>
+              {balance !== null ? formatToSOL(balance, 4) : '0.0000'}
+            </Text>
+            <Text style={styles.balanceCurrency}>SOL</Text>
+          </View>
+          <RequestAirdropButton
+            selectedAccount={selectedAccount}
+            onAirdropComplete={() => fetchAndUpdateBalance(selectedAccount)}
+          />
         </View>
 
-        {/* USDC Balance */}
-        <View style={styles.balanceContainer}>
-          <Text style={styles.balanceAmountSecondary}>
-            {usdcBalance !== null ? formatNumber(usdcBalance) : '0.00'}
-          </Text>
-          <Text style={styles.balanceCurrencySecondary}>USDC</Text>
+        {/* USDC Balance Row */}
+        <View style={styles.tokenRow}>
+          <View style={styles.tokenInfo}>
+            <Text style={styles.balanceAmountSecondary}>
+              {usdcBalance !== null ? formatNumber(usdcBalance) : '0.00'}
+            </Text>
+            <Text style={styles.balanceCurrencySecondary}>USDC</Text>
+          </View>
+          <RequestUSDCAirdropButton
+            selectedAccount={selectedAccount}
+            onAirdropComplete={() => fetchAndUpdateBalance(selectedAccount)}
+          />
         </View>
       </View>
 
-      {/* Wallet Info Row */}
+      {/* Wallet Info & Disconnect */}
       <View style={styles.walletInfoRow}>
         <View style={styles.walletDetails}>
           <View style={styles.walletIcon}>
@@ -68,23 +91,13 @@ export default function AccountInfo({
             </Text>
           </View>
         </View>
-
-        <TouchableOpacity style={styles.copyButton}>
-          <Text style={styles.copyButtonText}>📋</Text>
+        <TouchableOpacity onPress={handleCopy} style={{padding: 4}}>
+          <Text style={{fontSize: 16}}>{copied ? '✅' : '📋'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <View style={styles.buttonWrapper}>
-          <RequestAirdropButton
-            selectedAccount={selectedAccount}
-            onAirdropComplete={() => fetchAndUpdateBalance(selectedAccount)}
-          />
-        </View>
-        <View style={styles.buttonWrapper}>
-          <DisconnectButton />
-        </View>
+      <View style={{marginTop: 8}}>
+        <DisconnectButton />
       </View>
     </View>
   );
@@ -192,5 +205,21 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     flex: 1,
+  },
+  tokenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1F2937',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+    width: '100%',
+  },
+  tokenInfo: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
   },
 });

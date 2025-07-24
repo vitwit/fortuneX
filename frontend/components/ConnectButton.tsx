@@ -61,11 +61,11 @@ export default function ConnectButton({
 const styles = StyleSheet.create({
   button: {
     backgroundColor: '#10B981',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
     alignItems: 'center',
-    minWidth: 180,
+    minWidth: 150,
   },
   buttonDisabled: {
     backgroundColor: '#cccccc',

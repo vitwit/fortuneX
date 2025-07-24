@@ -9,7 +9,7 @@ import {
   Account,
 } from '../components/providers/AuthorizationProvider';
 import {useConnection} from './providers/ConnectionProvider';
-import {USDC_MINT} from '../util/constants';
+import {useGlobalState} from './providers/NavigationProvider';
 
 const Profile = () => {
   const {connection} = useConnection();
@@ -17,17 +17,21 @@ const Profile = () => {
   const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const {globalState} = useGlobalState();
 
   const {selectedAccount} = useAuthorization();
 
   const fetchUsdcBalance = useCallback(
     async (account: Account) => {
+      if (!globalState?.usdcMint) {
+        return;
+      }
       try {
         // Get all token accounts for this wallet
         const tokenAccounts = await connection.getTokenAccountsByOwner(
           account.publicKey,
           {
-            mint: USDC_MINT,
+            mint: globalState?.usdcMint,
           },
         );
 
@@ -50,7 +54,7 @@ const Profile = () => {
         setUsdcBalance(0);
       }
     },
-    [connection],
+    [connection, globalState?.usdcMint],
   );
 
   const fetchAndUpdateBalance = useCallback(
@@ -78,7 +82,7 @@ const Profile = () => {
       return;
     }
     fetchAndUpdateBalance(selectedAccount);
-  }, [fetchAndUpdateBalance, selectedAccount]);
+  }, [selectedAccount]);
 
   useEffect(() => {
     Animated.parallel([
@@ -124,11 +128,14 @@ const Profile = () => {
       ) : (
         <View
           style={{
+            flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            marginTop: 20,
+            marginTop: 100,
           }}>
-          <ConnectButton />
+          <Text style={{fontSize: 16, color: '#f1f1f1'}}>
+            Please connect your wallet
+          </Text>
         </View>
       )}
     </View>

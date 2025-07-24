@@ -11,22 +11,18 @@ import {
   TouchableOpacity,
 } from 'react-native';
 
-import {Section} from '../components/Section';
-import ConnectButton from '../components/ConnectButton';
-import AccountInfo from '../components/AccountInfo';
 import {
   useAuthorization,
   Account,
 } from '../components/providers/AuthorizationProvider';
 import {useConnection} from '../components/providers/ConnectionProvider';
 import LotteryPoolsComponent from '../components/LotteryPool';
-import {useNavigation} from '../components/providers/NavigationProvider';
-import LotteryPoolInfo from '../components/LotteryPoolInfo';
 import History from '../components/History';
 import Profile from '../components/Profile';
 import RecentWinner from '../components/RecentWinner';
-import RaffleTicket from '../components/Ticket';
 import AllPools from '../components/AllPools';
+import {useGlobalState} from '../components/providers/NavigationProvider';
+import ConnectButton from '../components/ConnectButton';
 
 const {width, height} = Dimensions.get('window');
 
@@ -42,7 +38,6 @@ export default function MainScreen() {
   const [slideAnim] = useState(new Animated.Value(50));
   const [activeTab, setActiveTab] = useState('Home');
   const [pulseAnim] = useState(new Animated.Value(1));
-  const {goBack, screen, params} = useNavigation();
 
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
@@ -200,12 +195,11 @@ export default function MainScreen() {
             <Text style={styles.appSubtitle}>A Millionaire Daily</Text>
           </View>
 
-          {/* <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Text style={styles.notificationIcon}>🔔</Text>
-              <View style={styles.notificationBadge} />
-            </TouchableOpacity>
-          </View> */}
+          {selectedAccount ? null : (
+            <View style={styles.headerRight}>
+              <ConnectButton />
+            </View>
+          )}
         </View>
       </Animated.View>
 

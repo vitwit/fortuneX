@@ -27,8 +27,9 @@ import {useConnection} from './providers/ConnectionProvider';
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {sha256} from '@noble/hashes/sha256';
 import {Buffer} from 'buffer';
-import {PROGRAM_ID, USDC_MINT} from '../util/constants';
+import {PROGRAM_ID} from '../util/constants';
 import {useToast} from './providers/ToastProvider';
+import {useGlobalState} from './providers/NavigationProvider';
 
 interface TicketDetailsModalProps {
   visible: boolean;
@@ -59,6 +60,8 @@ export default function TicketDetailsModal({
   const {selectedAccount, authorizeSession} = useAuthorization();
   const [cancelling, setCancelling] = useState(false);
   const toast = useToast();
+  const {globalState} = useGlobalState();
+  const USDC_MINT = globalState?.usdcMint;
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(Number(timestamp) * 1000);
@@ -74,6 +77,10 @@ export default function TicketDetailsModal({
     async (poolId: number, ticketNumber: bigint) => {
       if (!selectedAccount?.publicKey) {
         throw new Error('No wallet connected');
+      }
+
+      if (!USDC_MINT) {
+        throw new Error('Failed to fetch global state');
       }
 
       return await transact(async (wallet: Web3MobileWallet) => {

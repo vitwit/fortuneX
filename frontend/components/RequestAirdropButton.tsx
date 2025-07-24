@@ -48,7 +48,9 @@ export default function RequestAirdropButton({
       await requestAirdrop();
       alertAndLog(
         'Funding successful:',
-        `${convertLamportsToSOL(LAMPORTS_PER_AIRDROP)} SOL added to ${selectedAccount.publicKey}`,
+        `${convertLamportsToSOL(LAMPORTS_PER_AIRDROP)} SOL added to ${
+          selectedAccount.publicKey
+        }`,
       );
       onAirdropComplete(selectedAccount);
     } catch (err: any) {
@@ -63,18 +65,13 @@ export default function RequestAirdropButton({
 
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        airdropInProgress && styles.buttonDisabled,
-        style,
-      ]}
+      style={[styles.button, airdropInProgress && styles.buttonDisabled, style]}
       onPress={handlePress}
-      disabled={airdropInProgress}
-    >
+      disabled={airdropInProgress}>
       {airdropInProgress ? (
         <ActivityIndicator color="#fff" />
       ) : (
-        <Text style={styles.buttonText}>Request Airdrop</Text>
+        <Text style={styles.buttonText}>Airdrop</Text>
       )}
     </TouchableOpacity>
   );
@@ -82,13 +79,12 @@ export default function RequestAirdropButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#28A745', // Green color
+    backgroundColor: '#10B981',
     paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    alignItems: 'center',
-     minWidth: 130,
   },
+
   buttonDisabled: {
     backgroundColor: '#a0d6a0',
   },
