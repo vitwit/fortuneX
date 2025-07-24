@@ -49,6 +49,7 @@ pub fn initialize_pool(
     lottery_pool.creator = ctx.accounts.authority.key();
     lottery_pool.commission_bps = LotteryPool::DEFAULT_COMMISSION_BPS;
     lottery_pool.bump = ctx.bumps.lottery_pool;
+    lottery_pool.cancelled_tickets = Vec::new();
 
     // Increment global pools count
     global_state.pools_count = global_state

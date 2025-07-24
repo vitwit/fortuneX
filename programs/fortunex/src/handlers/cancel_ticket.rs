@@ -97,6 +97,7 @@ pub fn cancel_ticket(ctx: Context<CancelTicket>, pool_id: u64, ticket_number: u6
     }
 
     lottery_pool.prize_pool -= cancelled_ticket.amount_paid;
+    lottery_pool.cancelled_tickets.push(ticket_number);
 
     // Check if pool status is full and update status
     if lottery_pool.status == PoolStatus::PoolFull {
