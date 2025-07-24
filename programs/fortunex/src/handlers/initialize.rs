@@ -1,4 +1,4 @@
-use crate::instructions::Initialize;
+use crate::{instructions::Initialize, GlobalState};
 use anchor_lang::prelude::*;
 
 pub fn initialize(
@@ -10,17 +10,11 @@ pub fn initialize(
 ) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
 
-    // Validate platform fee is reasonable (max 10% = 1000 bps)
-    require!(
-        platform_fee_bps <= 1000,
-        crate::FortuneXError::InvalidPlatformFee
-    );
+    // Validate platform fee is reasonable
+    GlobalState::validate_platform_fee_bps(platform_fee_bps)?;
 
-    // Validate bonus pool fee is reasonable (max 10% = 1000 bps)
-    require!(
-        bonus_pool_fee_bps <= 1000,
-        crate::FortuneXError::InvalidBonusPoolFee
-    );
+    // Validate bonus pool fee is reasonable
+    GlobalState::validate_bonus_pool_fee_bps(bonus_pool_fee_bps)?;
 
     // Initialize global state
     global_state.authority = ctx.accounts.authority.key();
@@ -37,6 +31,7 @@ pub fn initialize(
     msg!("Platform wallet: {}", global_state.platform_wallet);
     msg!("USDC mint: {}", global_state.usdc_mint);
     msg!("Platform fee: {} bps", global_state.platform_fee_bps);
+    msg!("Bonus Pool fee: {} bps", global_state.platform_fee_bps);
 
     Ok(())
 }

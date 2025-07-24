@@ -1,5 +1,5 @@
 use crate::enums::PoolStatus;
-use crate::FortuneXError;
+use crate::{FortuneXError, MAX_BONUS_POOL_FEE_BPS, MAX_PLATFORM_FEE_BPS};
 use anchor_lang::prelude::*;
 
 // Global program state
@@ -48,6 +48,21 @@ impl GlobalState {
             Err(FortuneXError::CreatorNotWhitelisted.into())
         }
     }
+
+    // Validate platform fee is reasonable
+    pub fn validate_platform_fee_bps(fee_bps: u16) -> Result<()> {
+        require!(
+            fee_bps <= MAX_PLATFORM_FEE_BPS,
+            FortuneXError::InvalidPlatformFee
+        );
+        Ok(())
+    }
+
+    // Validate bonus pool fee is reasonable
+    pub fn validate_bonus_pool_fee_bps(fee_bps: u16) -> Result<()> {
+        require!(fee_bps <= MAX_BONUS_POOL_FEE_BPS, FortuneXError::InvalidBonusPoolFee);
+        Ok(())
+    }
 }
 
 // Individual lottery pool
@@ -70,7 +85,7 @@ pub struct LotteryPool {
     pub creator: Pubkey,    // Creator of the pool
     pub bump: u8,
     #[max_len(100)]
-    pub cancelled_tickets: Vec<u64> // list of cancelled tickets in pool
+    pub cancelled_tickets: Vec<u64>, // list of cancelled tickets in pool
 }
 
 impl LotteryPool {
