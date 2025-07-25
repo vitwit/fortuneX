@@ -5,6 +5,6 @@ export const PROGRAM_ID = new PublicKey(
 );
 export const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111';
 export const RPC_URL = 'https://api.devnet.solana.com';
-export const AIRDROP_SERVICE_URL = 'http://104.131.162.169:3000';
+export const AIRDROP_SERVICE_URL = 'https://healthlock.conspulse.com/fc';
 
 export const GLOBAL_STATE_SEED = Buffer.from('global_state');
