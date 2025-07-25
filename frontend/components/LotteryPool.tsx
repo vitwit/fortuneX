@@ -33,6 +33,7 @@ import PoolInfoComponent from './PoolInfoComponent';
 import {useToast} from './providers/ToastProvider';
 import {useGlobalState} from './providers/NavigationProvider';
 import LoadingIndicator from './LoadingIndicator';
+import {formatNumber} from '../util/utils';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -136,12 +137,6 @@ export default function LotteryPoolsComponent({
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim]);
-
-  useEffect(() => {
-    if (!globalState) {
-      refreshGlobalState();
-    }
-  }, [globalState]);
 
   // Function to get global state PDA
   const getGlobalStatePDA = (): PublicKey => {
@@ -356,15 +351,8 @@ export default function LotteryPoolsComponent({
   };
 
   // Function to get pool type based on prize pool
-  const getPoolType = (prizePool: number): {type: string; color: string} => {
-    const amount = prizePool / 1_000_000;
-    if (amount >= 500) {
-      return {type: 'MEGA', color: '#10B981'};
-    } else if (amount >= 100) {
-      return {type: 'DAILY', color: '#7C3AED'};
-    } else {
-      return {type: 'FLASH', color: '#F59E0B'};
-    }
+  const getPoolType = (): {type: string; color: string} => {
+    return {type: 'FLASH', color: '#F59E0B'};
   };
 
   // Function to format USDC amount
@@ -535,8 +523,8 @@ export default function LotteryPoolsComponent({
         const txid = await connection.sendRawTransaction(
           signedTx[0].serialize(),
         );
-        // await connection.confirmTransaction(txid, 'confirmed');
-        await waitForConfirmation(connection, txid, 30000);
+        await connection.confirmTransaction(txid, 'confirmed');
+        // await waitForConfirmation(connection, txid, 30000);
 
         return signedTx[0];
       });
@@ -654,7 +642,7 @@ export default function LotteryPoolsComponent({
     const statusColor = getStatusColor(item.status);
     const isActive = item.status === PoolStatus.Active;
     const remainingTickets = totalTickets - soldCount;
-    const poolType = getPoolType(item.prizePool);
+    const poolType = getPoolType();
 
     const userTicketCount = countUserTickets(
       item.ticketsSold,
@@ -695,7 +683,7 @@ export default function LotteryPoolsComponent({
         <View style={styles.poolPrize}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <Text style={styles.maxPoolAmount}>
-              ${formatUSDC(item.ticketPrice * item.maxTickets)}
+              ${formatNumber(item.ticketPrice * item.maxTickets)}
             </Text>
           </View>
           <Text style={styles.poolPrizeLabel}>Prize Pool</Text>
@@ -709,7 +697,7 @@ export default function LotteryPoolsComponent({
           <View style={styles.poolInfoRow}>
             <Text style={styles.poolInfoLabel}>Ticket Price</Text>
             <Text style={styles.poolInfoValue}>
-              ${formatUSDC(item.ticketPrice)}
+              ${formatNumber(item.ticketPrice)}
             </Text>
           </View>
           <View style={styles.poolInfoRow}>
@@ -809,7 +797,7 @@ export default function LotteryPoolsComponent({
                 Available Tickets: {remainingTickets}
               </Text>
               <Text style={styles.ticketInfoText}>
-                Price per Ticket: ${formatUSDC(selectedPool.ticketPrice)}
+                Price per Ticket: ${formatNumber(selectedPool.ticketPrice)}
               </Text>
             </View>
 
@@ -853,7 +841,7 @@ export default function LotteryPoolsComponent({
             <View style={styles.totalCost}>
               <Text style={styles.totalCostLabel}>Total Cost</Text>
               <Text style={styles.totalCostValue}>
-                ${formatUSDC(totalCost)}
+                ${formatNumber(totalCost)}
               </Text>
             </View>
 

@@ -86,12 +86,6 @@ const Profile = () => {
   );
 
   useEffect(() => {
-    if (!globalState) {
-      refreshGlobalState();
-    }
-  }, [globalState]);
-
-  useEffect(() => {
     if (!selectedAccount) {
       return;
     }

@@ -13,7 +13,8 @@ import {
 import ConnectButton from './ConnectButton';
 import RaffleTicket from './Ticket';
 import TicketDetailsModal from './TicketDetailsModal'; // Import the new modal
-import { PROGRAM_ID } from '../util/constants';
+import {PROGRAM_ID} from '../util/constants';
+import {formatNumber} from '../util/utils';
 
 type TicketDetails = {
   ticket_number: bigint;
@@ -137,63 +138,46 @@ export default function UserTicketsComponent() {
     return (Number(amount) / 1e6).toFixed(2);
   };
 
-  const toggleExpand = (poolKey: string) => {
-    setExpandedPools(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(poolKey)) {
-        newSet.delete(poolKey);
-      } else {
-        newSet.add(poolKey);
-      }
-      return newSet;
-    });
-  };
-
   const renderTicketsByPool = () => {
     return userTickets.map((userTicket, poolIndex) => {
-      const poolKey = userTicket.pool.toBase58() + userTicket.poolId.toString();
-      const isExpanded = expandedPools.has(poolKey);
-      const ticketList = isExpanded
-        ? userTicket.tickets
-        : userTicket.tickets.slice(0, 1);
+      const ticketList = userTicket.tickets;
 
       return (
         <View key={poolIndex} style={styles.poolSection}>
           <View style={styles.poolHeader}>
             <Text style={styles.poolTitle}>
-              🎯 Pool #{userTicket.poolId.toString()}
+              🎯 Pool #{userTicket.poolId.toString()} ({ticketList?.length}{' '}
+              Tickets)
             </Text>
             <Text style={styles.poolAddress}>{userTicket.pool.toBase58()}</Text>
           </View>
 
-          {ticketList.map((ticket, ticketIndex) => (
-            <RaffleTicket
-              key={`${poolIndex}-${ticketIndex}`}
-              ticketNumber={ticket.ticket_number.toString()}
-              amountPaid={formatAmount(ticket.amount_paid)}
-              timestamp={ticket.timestamp.toString()}
-              poolId={userTicket.poolId.toString()}
-              contestName="FortuneX"
-              onPress={() =>
-                handleTicketPress(
-                  ticket.ticket_number.toString(),
-                  userTicket.poolId.toString(),
-                  formatAmount(ticket.amount_paid),
-                  ticket.timestamp.toString(),
-                )
-              }
-            />
-          ))}
-
-          {userTicket.tickets.length > 1 && (
-            <Text
-              style={styles.viewMoreText}
-              onPress={() => toggleExpand(poolKey)}>
-              {isExpanded
-                ? 'View Less'
-                : `View More (${userTicket.tickets.length - 1} tickets)`}
-            </Text>
-          )}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {ticketList.map((ticket, ticketIndex) => (
+              <View
+                key={`${poolIndex}-${ticketIndex}`}
+                style={{
+                  marginRight: ticketIndex !== ticketList.length - 1 ? 8 : 0,
+                }} // 8px gap
+              >
+                <RaffleTicket
+                  ticketNumber={ticket.ticket_number.toString()}
+                  amountPaid={formatNumber(Number(ticket.amount_paid))}
+                  timestamp={ticket.timestamp.toString()}
+                  poolId={userTicket.poolId.toString()}
+                  contestName="FortuneX"
+                  onPress={() =>
+                    handleTicketPress(
+                      ticket.ticket_number.toString(),
+                      userTicket.poolId.toString(),
+                      formatAmount(ticket.amount_paid),
+                      ticket.timestamp.toString(),
+                    )
+                  }
+                />
+              </View>
+            ))}
+          </ScrollView>
         </View>
       );
     });

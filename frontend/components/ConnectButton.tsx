@@ -66,6 +66,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     minWidth: 150,
+    display: 'flex',
+    justifyContent: 'center',
   },
   buttonDisabled: {
     backgroundColor: '#cccccc',

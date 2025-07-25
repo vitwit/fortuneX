@@ -23,6 +23,7 @@ import RecentWinner from '../components/RecentWinner';
 import AllPools from '../components/AllPools';
 import {useGlobalState} from '../components/providers/NavigationProvider';
 import ConnectButton from '../components/ConnectButton';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const {width, height} = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ export default function MainScreen() {
   const [slideAnim] = useState(new Animated.Value(50));
   const [activeTab, setActiveTab] = useState('Home');
   const [pulseAnim] = useState(new Animated.Value(1));
+  const {refreshGlobalState, isLoadingGlobalState} = useGlobalState();
 
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
@@ -47,6 +49,10 @@ export default function MainScreen() {
     },
     [connection],
   );
+
+  useEffect(() => {
+    refreshGlobalState();
+  }, []);
 
   useEffect(() => {
     if (!selectedAccount) {
@@ -204,26 +210,32 @@ export default function MainScreen() {
       </Animated.View>
 
       {/* Main Content */}
-      <View style={styles.mainContent}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}>
-          {/* Wallet Card */}
+      {isLoadingGlobalState ? (
+        <View style={{marginTop: 100}}>
+          <LoadingIndicator text="Loading..." />
+        </View>
+      ) : (
+        <View style={styles.mainContent}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}>
+            {/* Wallet Card */}
 
-          {/* Tab Content */}
-          <Animated.View
-            style={[
-              styles.contentContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{translateY: slideAnim}],
-              },
-            ]}>
-            {renderTabContent()}
-          </Animated.View>
-        </ScrollView>
-      </View>
+            {/* Tab Content */}
+            <Animated.View
+              style={[
+                styles.contentContainer,
+                {
+                  opacity: fadeAnim,
+                  transform: [{translateY: slideAnim}],
+                },
+              ]}>
+              {renderTabContent()}
+            </Animated.View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>

@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import {useAuthorization} from './providers/AuthorizationProvider';
+import {formatNumber} from '../util/utils';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -251,7 +252,7 @@ export default function PoolInfoComponent({
             <Text style={styles.sectionTitle}>Prize Pool</Text>
             <View style={styles.prizeContainer}>
               <Text style={styles.currentPrize}>
-                ${formatUSDC(maxPrizePool)}
+                ${formatNumber(maxPrizePool)}
               </Text>
             </View>
           </View>
@@ -310,7 +311,7 @@ export default function PoolInfoComponent({
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Ticket Price</Text>
                 <Text style={styles.infoValue}>
-                  ${formatUSDC(poolData.ticketPrice)}
+                  ${formatNumber(poolData.ticketPrice)}
                 </Text>
               </View>
               <View style={styles.infoItem}>

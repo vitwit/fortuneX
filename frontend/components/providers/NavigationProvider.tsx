@@ -149,7 +149,7 @@ export const NavigationProvider = ({children}: NavigationProviderProps) => {
   // Fetch global state on mount
   useEffect(() => {
     refreshGlobalState();
-  }, [refreshGlobalState]);
+  }, []);
 
   const navigate = (
     nextScreen: ScreenName,
