@@ -308,7 +308,7 @@ export default function LotteryPoolsComponent({
         }
       }
 
-      setPools(poolsData);
+      setPools(poolsData.reverse());
     } catch (error) {
       console.error('Error fetching pools:', error);
       alertAndLog('Error', 'Failed to fetch pools');
@@ -320,7 +320,8 @@ export default function LotteryPoolsComponent({
   // Load pools on component mount
   useEffect(() => {
     fetchPools();
-  }, [fetchPools]);
+    console.log('herer');
+  }, []);
 
   // Function to get status text
   const getStatusText = (status: PoolStatus): string => {
