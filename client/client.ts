@@ -519,7 +519,6 @@ async function main() {
     // console.log("🎉 Setup complete!");
     console.log("Pool ID:", poolResult.poolId);
     console.log("Pool PDA:", poolResult.poolPda.toBase58());
-    await client.createLotteryPool(creator, 120);
 
     // // ✅ Get pool info
     const poolInfo = await client.getPoolInfo(poolResult.poolId);
