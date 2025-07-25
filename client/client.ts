@@ -86,6 +86,36 @@ export class FortuneXClient {
     return client;
   }
 
+  // ✅ NEW: Check if platform is already initialized
+  async isPlatformInitialized(): Promise<{
+    initialized: boolean;
+    globalState?: any;
+  }> {
+    try {
+      const [globalStatePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(this.GLOBAL_STATE_SEED)],
+        this.program.programId
+      );
+
+      const globalState = await this.program.account.globalState.fetch(
+        globalStatePda
+      );
+      console.log("🔍 Platform is already initialized!");
+      console.log("Global state:", {
+        authority: globalState.authority.toBase58(),
+        platformWallet: globalState.platformWallet.toBase58(),
+        usdcMint: globalState.usdcMint.toBase58(),
+        platformFeeBps: globalState.platformFeeBps,
+        poolsCount: globalState.poolsCount.toString(),
+      });
+
+      return { initialized: true, globalState };
+    } catch (error) {
+      console.log("📝 Platform not yet initialized");
+      return { initialized: false };
+    }
+  }
+
   async initializePlatform(
     authority: Keypair,
     platformWallet: PublicKey,
@@ -123,6 +153,26 @@ export class FortuneXClient {
     });
 
     return tx;
+  }
+
+  // ✅ NEW: Check if pool exists
+  async doesPoolExist(poolId: number): Promise<boolean> {
+    try {
+      const [lotteryPoolPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(this.LOTTERY_POOL_SEED),
+          new anchor.BN(poolId).toArrayLike(Buffer, "le", 8),
+        ],
+        this.program.programId
+      );
+
+      await this.program.account.lotteryPool.fetch(lotteryPoolPda);
+      console.log(`🔍 Pool ${poolId} already exists!`);
+      return true;
+    } catch (error) {
+      console.log(`📝 Pool ${poolId} does not exist yet`);
+      return false;
+    }
   }
 
   async createLotteryPool(
@@ -491,7 +541,7 @@ export class FortuneXClient {
         await this.mintToATA(
           usdcMint,
           userWallet,
-          100_000_000, // 200 USDC
+          100_000_000, // 100 USDC
           authority
         );
 
@@ -520,7 +570,7 @@ export class FortuneXClient {
 }
 
 // ------------------------
-// ✅ Main usage example
+// ✅ UPDATED Main function with idempotent logic
 // ------------------------
 
 async function main() {
@@ -534,47 +584,88 @@ async function main() {
 
   const platformWallet = authority;
   const creator = authority;
-  const crank = authority; // Using authority as crank for simplicity
 
   const phantomWalletPubkey = new PublicKey(
     "52Egn3j4NcoShEBaFAz5PGc6rzaTGrE3BG7dUwaUZZrH" // Mobile wallet address
   );
 
   try {
-    const usdcMint = await client.createUSDCMint(authority);
+    // ✅ Check if platform is already initialized
+    const { initialized, globalState } = await client.isPlatformInitialized();
 
-    console.log("usdcmint", usdcMint.toBase58());
-    // ✅ Mint 100 USDC (100_000_000 if 6 decimals)
-    await client.mintToATA(
-      usdcMint,
-      phantomWalletPubkey,
-      100_000_000,
-      authority
-    );
+    let usdcMint: PublicKey;
 
-    await client.mintToATA(usdcMint, creator.publicKey, 100_000_000, authority);
+    if (initialized && globalState) {
+      // Platform is already initialized - use existing USDC mint
+      usdcMint = globalState.usdcMint;
+      console.log("🔄 Using existing USDC mint:", usdcMint.toBase58());
 
-    // ✅ Initialize platform (uncomment if needed)
-    await client.initializePlatform(
-      authority,
-      platformWallet.publicKey,
-      usdcMint,
-      100
-    );
+      // Ensure phantom wallet has some USDC for testing
+      try {
+        await client.mintToATA(
+          usdcMint,
+          phantomWalletPubkey,
+          100_000_000,
+          authority
+        );
+      } catch (error) {
+        console.log("💡 Phantom wallet might already have USDC tokens");
+      }
 
-    // // ✅ Create lottery pool with 5 minutes expiry
-    const poolResult = await client.createLotteryPool(creator, 300); // 300 seconds = 5 minutes
-    // console.log("🎉 Setup complete!");
-    console.log("Pool ID:", poolResult.poolId);
-    console.log("Pool PDA:", poolResult.poolPda.toBase58());
+      // Ensure creator has some USDC for testing
+      try {
+        await client.mintToATA(
+          usdcMint,
+          creator.publicKey,
+          100_000_000,
+          authority
+        );
+      } catch (error) {
+        console.log("💡 Creator might already have USDC tokens");
+      }
+    } else {
+      // First time setup - create everything
+      console.log("🚀 First time setup - initializing everything...");
 
-    // // ✅ Get pool info
-    const poolInfo = await client.getPoolInfo(poolResult.poolId);
-    console.log("📊 Pool Info:", poolInfo);
+      // Create USDC mint
+      usdcMint = await client.createUSDCMint(authority);
+      console.log("💰 USDC mint created:", usdcMint.toBase58());
 
-    // const _ = await client.buyTicket(creator, poolResult.poolId, 5);
+      // Mint USDC to phantom wallet and creator
+      await client.mintToATA(
+        usdcMint,
+        phantomWalletPubkey,
+        100_000_000,
+        authority
+      );
+      await client.mintToATA(
+        usdcMint,
+        creator.publicKey,
+        100_000_000,
+        authority
+      );
 
-    // 🚀 Start the airdrop API
+      // Initialize platform
+      await client.initializePlatform(
+        authority,
+        platformWallet.publicKey,
+        usdcMint,
+        100
+      );
+
+      // Create first lottery pool
+      const poolResult = await client.createLotteryPool(creator, 300); // 300 seconds = 5 minutes
+      console.log("🎉 First pool created!");
+      console.log("Pool ID:", poolResult.poolId);
+      console.log("Pool PDA:", poolResult.poolPda.toBase58());
+
+      // Get pool info
+      const poolInfo = await client.getPoolInfo(poolResult.poolId);
+      console.log("📊 Pool Info:", poolInfo);
+    }
+
+    // ✅ Always start the airdrop API with the correct USDC mint
+    console.log("🚀 Starting airdrop API...");
     client.setupAirdropAPI(usdcMint, authority);
   } catch (err) {
     console.error("❌ Setup failed:", err);
