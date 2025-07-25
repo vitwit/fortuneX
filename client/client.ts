@@ -53,7 +53,7 @@ export class FortuneXClient {
     // Load the IDL - the program ID is embedded in the IDL
     try {
       const idl = JSON.parse(
-        readFileSync("./target/idl/fortunex.json", "utf8")
+        readFileSync("./idl/fortunex.json", "utf8")
       );
       // Program constructor: new Program(idl, provider?, coder?, getCustomResolver?)
       this.program = new Program(idl, this.provider);
