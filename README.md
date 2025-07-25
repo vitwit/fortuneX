@@ -124,7 +124,7 @@ Before setting up the project, ensure you have the following installed:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/vitwit/fortunex
 
 # Navigate to project directory
 cd <project-name>
