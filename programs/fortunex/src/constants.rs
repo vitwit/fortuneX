@@ -15,6 +15,7 @@ pub const DRAW_HISTORY_SEED: &[u8] = b"draw_history";
 // Platform fee configuration
 pub const DEFAULT_PLATFORM_FEE_BPS: u16 = 100; // 1% (100 basis points)
 pub const MAX_PLATFORM_FEE_BPS: u16 = 1000;    // 10% maximum allowed
+pub const MAX_BONUS_POOL_FEE_BPS: u16 = 1000;    // 10% maximum allowed
 
 // Draw configuration
 pub const DEFAULT_DRAW_INTERVAL: i64 = 24 * 60 * 60; // 24 hours in seconds

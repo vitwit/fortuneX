@@ -51,6 +51,11 @@ pub mod fortunex {
         handlers::update_whitelist(ctx, is_add)
     }
 
+    // Update global state
+    pub fn update_global_state(ctx: Context<UpdateGlobalState>, args: handlers::UpdateGlobalStateArgs) -> Result<()> {
+        handlers::update_global_state(ctx, args)
+    }
+
     // Buy a ticket for the lottery
     pub fn buy_ticket(ctx: Context<BuyTicket>, pool_id: u64, quantity: u64) -> Result<()> {
         handlers::buy_ticket(ctx, pool_id, quantity)

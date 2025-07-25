@@ -9,6 +9,7 @@ import {
   mintTo,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
+import { assert } from "chai";
 
 describe("fortunex", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
@@ -53,7 +54,7 @@ describe("fortunex", () => {
 
     // Initialize program
     const tx = await program.methods
-      .initialize(platformWallet.publicKey, usdcMint, 50, 50)
+      .initialize(platformWallet.publicKey, usdcMint, 30, 50)
       .accounts({
         globalState: globalStatePda,
         usdcMint: usdcMint,
@@ -69,6 +70,65 @@ describe("fortunex", () => {
     // Verify initialization
     const globalState = await program.account.globalState.fetch(globalStatePda);
     console.log("Global state initialized:", globalState);
+  });
+
+  it("should update global state parameters", async () => {
+    // Find global state PDA
+    const [globalStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(GLOBAL_STATE_SEED)],
+      program.programId
+    );
+
+    let newPlatformFeeBps = 50;
+
+    await program.methods
+      .updateGlobalState({
+        newPlatformWallet: null,
+        newUsdcMint: null,
+        newPlatformFeeBps: newPlatformFeeBps,
+        newBonusPoolFeeBps: null,
+      })
+      .accounts({
+        globalState: globalStatePda,
+        authority: authority.publicKey,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([authority])
+      .rpc();
+
+    // Fetch GlobalState to verify updates
+    const globalStateAccount = await program.account.globalState.fetch(globalStatePda);
+    assert.equal(globalStateAccount.platformFeeBps, newPlatformFeeBps);
+  });
+
+  it("should fail due to invalid platform fee bps", async () => {
+    // Find global state PDA
+    const [globalStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(GLOBAL_STATE_SEED)],
+      program.programId
+    );
+
+    try {
+      await program.methods
+        .updateGlobalState({
+          newPlatformWallet: null,
+          newUsdcMint: null,
+          newPlatformFeeBps: 1200,
+          newBonusPoolFeeBps: null,
+        })
+        .accounts({
+          globalState: globalStatePda,
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId
+        })
+        .signers([authority])
+        .rpc();
+
+      assert.fail("Expected transaction to fail due to invalid platform fee bps");
+    } catch (err) {
+      console.log("Failed as expected:", err.message || err.toString());
+      assert.include(err.toString(), "InvalidPlatformFee");
+    }
   });
 
   it("Should create a lottery pool", async () => {
@@ -409,12 +469,12 @@ describe("fortunex", () => {
         vaultAuthority: vaultAuthority,
         platformTokenAccount: platformTokenAccount,
         creatorTokenAccount: creatorTokenAccount,
-        crank: crank.publicKey,
+        crank: authority.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .remainingAccounts(remainingAccounts)
-      .signers([crank])
+      .signers([authority])
       .rpc();
 
     console.log("\n🎉 Draw transaction signature:", drawTx);
