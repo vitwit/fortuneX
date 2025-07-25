@@ -149,9 +149,9 @@ const RaffleTicket = ({
               </View>
 
               {/* Draw Date */}
-              <Text style={styles.drawDate}>
+              {/* <Text style={styles.drawDate}>
                 DRAW DATE: {ticketData.drawDate}
-              </Text>
+              </Text> */}
 
               {/* Pool ID */}
               <Text style={styles.poolId}>POOL: {poolId}</Text>
