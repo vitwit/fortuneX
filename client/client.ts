@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Fortunex } from "../target/types/fortunex";
+import { Fortunex } from "../target/types/fortunex"; // You'll need to copy this type file
 import {
   PublicKey,
   Keypair,
@@ -18,7 +18,7 @@ import {
   mintTo,
   createAccount,
 } from "@solana/spl-token";
-import { access, readFileSync } from "fs";
+import { readFileSync } from "fs";
 import express from "express";
 
 export class FortuneXClient {
@@ -26,16 +26,64 @@ export class FortuneXClient {
   public provider: anchor.Provider;
   public creatorTokenAccount: anchor.web3.PublicKey;
 
+  // Your deployed program ID - this will be read from the IDL
+  // private readonly PROGRAM_ID = new PublicKey("YOUR_PROGRAM_ID_HERE");
+
   // Seeds
   private readonly GLOBAL_STATE_SEED = "global_state";
   private readonly LOTTERY_POOL_SEED = "lottery_pool";
   private readonly VAULT_AUTHORITY_SEED = "vault_authority";
   private readonly USER_TICKET_SEED = "user_ticket";
 
-  constructor() {
-    anchor.setProvider(anchor.AnchorProvider.env());
-    this.program = anchor.workspace.fortunex as Program<Fortunex>;
-    this.provider = anchor.getProvider();
+  constructor(connection?: Connection, wallet?: anchor.Wallet) {
+    // Option 1: Use provided connection and wallet
+    if (connection && wallet) {
+      this.provider = new anchor.AnchorProvider(
+        connection,
+        wallet,
+        anchor.AnchorProvider.defaultOptions()
+      );
+    } else {
+      // Option 2: Use environment provider (requires ANCHOR_PROVIDER_URL and ANCHOR_WALLET)
+      this.provider = anchor.AnchorProvider.env();
+    }
+
+    anchor.setProvider(this.provider);
+
+    // Load the IDL - the program ID is embedded in the IDL
+    try {
+      const idl = JSON.parse(
+        readFileSync("./target/idl/fortunex.json", "utf8")
+      );
+      // Program constructor: new Program(idl, provider?, coder?, getCustomResolver?)
+      this.program = new Program(idl, this.provider);
+
+      // The program ID comes from the IDL
+      console.log("Program ID from IDL:", this.program.programId.toString());
+    } catch (error) {
+      console.error("Could not load IDL from file:", error);
+      throw new Error("Failed to initialize program with IDL");
+    }
+  }
+
+  // Alternative constructor method using IDL object directly
+  static fromIdl(
+    idl: any, // Your IDL object
+    connection: Connection,
+    wallet: anchor.Wallet
+  ): FortuneXClient {
+    const provider = new anchor.AnchorProvider(
+      connection,
+      wallet,
+      anchor.AnchorProvider.defaultOptions()
+    );
+    anchor.setProvider(provider);
+
+    const client = Object.create(FortuneXClient.prototype);
+    client.provider = provider;
+    client.program = new Program(idl, provider);
+
+    return client;
   }
 
   async initializePlatform(
@@ -460,7 +508,7 @@ export class FortuneXClient {
       }
     });
 
-    app.listen(PORT, '0.0.0.0', () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Airdrop API running on port ${PORT}`);
       console.log(
         `📡 Endpoint: http://localhost:${PORT}/airdrop/:walletAddress`
