@@ -133,15 +133,8 @@ export default function PoolInfoComponent({
   };
 
   // Function to get pool type based on prize pool
-  const getPoolType = (prizePool: number): {type: string; color: string} => {
-    const amount = prizePool / 1_000_000;
-    if (amount >= 500) {
-      return {type: 'MEGA', color: '#10B981'};
-    } else if (amount >= 100) {
-      return {type: 'DAILY', color: '#7C3AED'};
-    } else {
-      return {type: 'FLASH', color: '#F59E0B'};
-    }
+  const getPoolType = (): {type: string; color: string} => {
+    return {type: 'FLASH', color: '#F59E0B'};
   };
 
   // Function to format USDC amount
@@ -194,7 +187,7 @@ export default function PoolInfoComponent({
   const statusColor = getStatusColor(poolData.status);
   const isActive = poolData.status === PoolStatus.Active;
   const remainingTickets = totalTickets - soldCount;
-  const poolType = getPoolType(poolData.prizePool);
+  const poolType = getPoolType();
   const maxPrizePool = poolData.ticketPrice * poolData.maxTickets;
 
   return (

@@ -152,7 +152,11 @@ export default function UserTicketsComponent() {
             <Text style={styles.poolAddress}>{userTicket.pool.toBase58()}</Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {ticketList.length > 1 && (
+            <Text style={styles.scrollHint}>Swipe to view more tickets →</Text>
+          )}
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
             {ticketList.map((ticket, ticketIndex) => (
               <View
                 key={`${poolIndex}-${ticketIndex}`}
@@ -357,5 +361,11 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     marginTop: 8,
     fontWeight: '500',
+  },
+  scrollHint: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 6,
+    marginLeft: 8,
   },
 });
