@@ -4,13 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Animated,
-  ActivityIndicator,
   ScrollView,
   Modal,
   TextInput,
   Alert,
+  Dimensions,
 } from 'react-native';
 
 import {useAuthorization} from './providers/AuthorizationProvider';
@@ -82,6 +81,8 @@ const countUserTickets = (
   return array.filter(pubkey => pubkey.toBase58() === targetBase58).length;
 };
 
+const screenWidth = Dimensions.get('window').width;
+
 export default function LotteryPoolsComponent({
   horizontalView = true,
   showActive = true,
@@ -110,7 +111,7 @@ export default function LotteryPoolsComponent({
 
   const toast = useToast();
 
-  const [pulseAnim] = useState(new Animated.Value(1.2));
+  const [pulseAnim] = useState(new Animated.Value(1.3));
 
   // Seeds
   const GLOBAL_STATE_SEED = Buffer.from('global_state');
@@ -123,7 +124,7 @@ export default function LotteryPoolsComponent({
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.2,
+          toValue: 1.3,
           duration: 1000,
           useNativeDriver: true,
         }),
@@ -642,6 +643,7 @@ export default function LotteryPoolsComponent({
     const progress = (soldCount / totalTickets) * 100;
     const statusColor = getStatusColor(item.status);
     const isActive = item.status === PoolStatus.Active;
+    const isDrawing = item.status === PoolStatus.Drawing;
     const remainingTickets = totalTickets - soldCount;
     const poolType = getPoolType();
 
@@ -650,32 +652,37 @@ export default function LotteryPoolsComponent({
       selectedAccount?.publicKey,
     );
 
-    if (!isActive && showActive) {
-      return null;
-    }
+    // if (!isActive && showActive) {
+    //   return null;
+    // }
 
     return (
-      <View key={item.poolId} style={styles.poolCard}>
+      <TouchableOpacity
+        key={item.poolId}
+        style={styles.poolCard}
+        onPress={() => setCurrentPoolInfo(item)}
+        activeOpacity={0.7}>
         <View style={styles.poolHeader}>
-          <View style={[styles.poolType, {backgroundColor: poolType.color}]}>
-            <Text style={styles.poolTypeText}>{poolType.type}</Text>
-          </View>
-
-          <View style={styles.poolStatus}>
+          <View
+            style={[
+              styles.poolType,
+              {backgroundColor: statusColor},
+              {display: 'flex', flexDirection: 'row', alignItems: 'center'},
+            ]}>
             {isActive ? (
               <Animated.View
                 style={[
                   styles.liveDot,
                   {
-                    backgroundColor: '#10B981',
+                    backgroundColor: '#fff',
                     transform: [{scale: pulseAnim}],
                   },
                 ]}
               />
             ) : (
-              <View style={[styles.liveDot, {backgroundColor: statusColor}]} />
+              <View style={[styles.liveDot, {backgroundColor: '#fff'}]} />
             )}
-            <Text style={[styles.poolStatusText, {color: statusColor}]}>
+            <Text style={[styles.poolTypeText]}>
               {getStatusText(item.status)}
             </Text>
           </View>
@@ -751,17 +758,20 @@ export default function LotteryPoolsComponent({
         {isActive && remainingTickets > 0 && (
           <TouchableOpacity
             style={styles.buyButton}
-            onPress={() => handleBuyTicket(item)}>
+            onPress={e => {
+              e.stopPropagation();
+              handleBuyTicket(item);
+            }}>
             <Text style={styles.buyButtonText}>Buy Tickets</Text>
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.viewMoreButton}
           onPress={() => setCurrentPoolInfo(item)}>
           <Text style={styles.buyButtonText}>View More</Text>
-        </TouchableOpacity>
-      </View>
+        </TouchableOpacity> */}
+      </TouchableOpacity>
     );
   };
 
@@ -902,17 +912,25 @@ export default function LotteryPoolsComponent({
         </View>
       ) : (
         <ScrollView
-          horizontal={horizontalView}
+          horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.poolsScrollContainer}>
-          {pools.map(item => renderPoolItem({item}))}
+          contentContainerStyle={[
+            styles.poolsScrollContainer,
+            pools.filter(item => item.status !== PoolStatus.Completed)
+              .length === 1 && {paddingHorizontal: 20}, // Add side padding for single card
+          ]}>
+          {isMainScreen
+            ? pools
+                .filter(item => item.status !== PoolStatus.Completed)
+                .map(item => renderPoolItem({item}))
+            : pools.map(item => renderPoolItem({item}))}
         </ScrollView>
       )}
 
       {/* Main Screen - No Active Pools Message */}
       {isMainScreen &&
         pools.length > 0 &&
-        pools.filter(pool => pool.status === PoolStatus.Active).length ===
+        pools.filter(pool => pool.status === PoolStatus.Completed).length ===
           0 && (
           <View style={styles.emptyWrapper}>
             {renderEmptyComponent('New pools coming soon.')}
@@ -952,7 +970,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   poolCard: {
-    width: 280,
+    width: screenWidth - 60,
     backgroundColor: '#1A1A1A',
     borderRadius: 20,
     padding: 20,
@@ -961,6 +979,7 @@ const styles = StyleSheet.create({
     borderColor: '#2A2A2A',
     marginTop: 10,
   },
+
   poolHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -986,7 +1005,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: '#fff',
     marginRight: 6,
   },
   poolStatusText: {

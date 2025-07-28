@@ -17,7 +17,6 @@
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.74.0",
     "buffer": "^6.0.3",
-    "crypto": "^1.0.1",
     "fast-text-encoding": "^1.0.6",
     "js-sha256": "^0.11.1",
     "react": "18.2.0",
