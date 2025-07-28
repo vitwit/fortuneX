@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import {sha256} from 'js-sha256';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -43,9 +44,10 @@ const RaffleTicket = ({
 
   // Generate ticket code from ticket number and pool ID
   const generateTicketCode = (ticketNumber: string, poolId: string) => {
-    const shortPoolId = poolId;
-    const shortTicketNum = ticketNumber;
-    return `TK-${shortPoolId}-${shortTicketNum}`;
+    const input = `${poolId}:${ticketNumber}`;
+    const hash = sha256(input).toUpperCase();
+    const shortHash = hash.substring(0, 8);
+    return `${shortHash}`;
   };
 
   const handlePressIn = () => {
@@ -351,7 +353,7 @@ const styles = StyleSheet.create({
   barcodeLine: {
     height: 2,
     backgroundColor: '#2a2a2a',
-    marginVertical: 0.5,  
+    marginVertical: 0.5,
   },
   boughtDateContainer: {
     position: 'absolute',
