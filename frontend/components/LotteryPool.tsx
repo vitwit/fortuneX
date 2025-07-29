@@ -321,7 +321,6 @@ export default function LotteryPoolsComponent({
   // Load pools on component mount
   useEffect(() => {
     fetchPools();
-    console.log('herer');
   }, []);
 
   // Function to get status text
@@ -659,7 +658,7 @@ export default function LotteryPoolsComponent({
     return (
       <TouchableOpacity
         key={item.poolId}
-        style={styles.poolCard}
+        style={[styles.poolCard, {marginRight: isMainScreen ? 16 : undefined}]}
         onPress={() => setCurrentPoolInfo(item)}
         activeOpacity={0.7}>
         <View style={styles.poolHeader}>
@@ -912,12 +911,13 @@ export default function LotteryPoolsComponent({
         </View>
       ) : (
         <ScrollView
-          horizontal
+          horizontal={isMainScreen}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[
             styles.poolsScrollContainer,
             pools.filter(item => item.status !== PoolStatus.Completed)
-              .length === 1 && {paddingHorizontal: 20}, // Add side padding for single card
+              .length === 1 &&
+              isMainScreen && {paddingHorizontal: 10}, // Add side padding for single card
           ]}>
           {isMainScreen
             ? pools
@@ -965,16 +965,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   poolsScrollContainer: {
-    paddingHorizontal: 20,
     paddingVertical: 10,
     alignItems: 'center',
   },
   poolCard: {
-    width: screenWidth - 60,
+    width: screenWidth * 0.9,
     backgroundColor: '#1A1A1A',
     borderRadius: 20,
     padding: 20,
-    marginRight: 16,
     borderWidth: 1,
     borderColor: '#2A2A2A',
     marginTop: 10,
