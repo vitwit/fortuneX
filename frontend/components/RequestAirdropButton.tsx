@@ -10,6 +10,7 @@ import {
 import {Account} from './providers/AuthorizationProvider';
 import {alertAndLog} from '../util/alertAndLog';
 import {LAMPORTS_PER_SOL} from '@solana/web3.js';
+import {useToast} from './providers/ToastProvider';
 
 type Props = Readonly<{
   selectedAccount: Account;
@@ -32,6 +33,7 @@ export default function RequestAirdropButton({
 }: Props) {
   const {connection} = useConnection();
   const [airdropInProgress, setAirdropInProgress] = useState(false);
+  const toast = useToast();
 
   const requestAirdrop = useCallback(async () => {
     const signature = await connection.requestAirdrop(
@@ -46,18 +48,20 @@ export default function RequestAirdropButton({
     setAirdropInProgress(true);
     try {
       await requestAirdrop();
-      alertAndLog(
-        'Funding successful:',
-        `${convertLamportsToSOL(LAMPORTS_PER_AIRDROP)} SOL added to ${
-          selectedAccount.publicKey
-        }`,
-      );
+      // alertAndLog(
+      //   'Funding successful:',
+      //   `${convertLamportsToSOL(LAMPORTS_PER_AIRDROP)} SOL added to ${
+      //     selectedAccount.publicKey
+      //   }`,
+      // );
+      toast.show({message: 'Airdrop successful', type: 'success'});
       onAirdropComplete(selectedAccount);
     } catch (err: any) {
-      alertAndLog(
-        'Failed to fund account:',
-        err instanceof Error ? err.message : err,
-      );
+      // alertAndLog(
+      //   'Failed to fund account:',
+      //   err instanceof Error ? err.message : err,
+      // );
+      toast.show({message: 'Failed to airdrop', type: 'error'});
     } finally {
       setAirdropInProgress(false);
     }

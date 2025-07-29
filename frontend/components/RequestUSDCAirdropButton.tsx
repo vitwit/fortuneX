@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import {PublicKey} from '@solana/web3.js';
 import {AIRDROP_SERVICE_URL} from '../util/constants';
+import {useToast} from './providers/ToastProvider';
 
 interface Props {
   selectedAccount: {
@@ -22,6 +23,7 @@ export default function RequestUSDCAirdropButton({
   onAirdropComplete,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const handleUSDCAirdrop = async () => {
     try {
@@ -33,11 +35,12 @@ export default function RequestUSDCAirdropButton({
         throw new Error('Airdrop request failed');
       }
 
-      Alert.alert('✅ Funding successful:', '100 USDC Airdropped!');
+      // Alert.alert('✅ Funding successful:', '100 USDC Airdropped!');
+      toast.show({message: 'Airdrop successfull', type: 'success'});
       onAirdropComplete();
     } catch (err) {
-      console.error('USDC Airdrop failed:', err);
-      Alert.alert('❌ Airdrop failed', (err as Error).message);
+      // Alert.alert('❌ Airdrop failed', (err as Error).message);
+      toast.show({message: 'Failed to airdrop', type: 'error'});
     } finally {
       setLoading(false);
     }

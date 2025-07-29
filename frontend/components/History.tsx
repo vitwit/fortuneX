@@ -18,6 +18,7 @@ import TicketDetailsModal from './TicketDetailsModal'; // Import the new modal
 import {PROGRAM_ID} from '../util/constants';
 import {formatNumber} from '../util/utils';
 import PoolInfoComponent from './PoolInfoComponent';
+import {Buffer} from 'buffer';
 
 type TicketDetails = {
   ticket_number: bigint;
