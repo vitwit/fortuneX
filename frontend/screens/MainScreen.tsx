@@ -107,26 +107,16 @@ export default function MainScreen() {
           {/* Banner */}
           <View style={styles.bannerContainer}>
             <Text style={styles.bannerText}>
-              <Text style={styles.bannerHighlight}>FortuneX</Text> creates a{' '}
-              <Text style={styles.bannerHighlight}>millionaire</Text> every{' '}
-              <Text style={styles.bannerPulse}>hour</Text>
+              <Text style={styles.bannerHighlight}>🎉 FortuneX</Text> creates a{' '}
+              <Text style={styles.bannerHighlight}>millionaire</Text>
+              <View>
+                <Text style={styles.tm}>T&C</Text>
+              </View>{' '}
+              every <Text style={styles.bannerPulse}>hour</Text>
             </Text>
           </View>
 
-          {/* Active Pools Section */}
-          <View style={styles.poolsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Live Pools</Text>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.poolsScroll}>
-              <LotteryPoolsComponent isMainScreen={true} />
-            </ScrollView>
-          </View>
-
+          <LotteryPoolsComponent isMainScreen={true} />
           <RecentWinner />
         </View>
       );
@@ -736,37 +726,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bannerContainer: {
+    width: '100%',
     marginBottom: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderRadius: 14,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderWidth: 1.5,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    backgroundColor: '#047857',
     borderColor: '#10B981',
     shadowColor: '#10B981',
-    shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   bannerText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'center',
-    fontWeight: '600',
-    lineHeight: 24,
-  },
-
-  bannerHighlight: {
-    color: '#10B981',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    lineHeight: 26,
   },
 
   bannerPulse: {
-    color: '#FACC15', // Yellow glow for "hour"
+    color: '#FACC15',
     fontWeight: 'bold',
+    textShadowColor: '#FACC15',
+    textShadowOffset: {width: 0, height: 0},
+    textShadowRadius: 8,
+  },
+  bannerHighlight: {
+    color: '#10B981',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+
+  tm: {
+    fontSize: 10,
+    color: 'white',
   },
 });

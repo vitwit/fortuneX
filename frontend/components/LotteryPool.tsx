@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect, useMemo} from 'react';
+import React, {useState, useCallback, useEffect, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import {useToast} from './providers/ToastProvider';
 import {useGlobalState} from './providers/NavigationProvider';
 import LoadingIndicator from './LoadingIndicator';
 import {formatNumber} from '../util/utils';
+import {styles} from './styles/lottery-pool';
 
 // Pool Status Enum
 enum PoolStatus {
@@ -99,12 +100,34 @@ export default function LotteryPoolsComponent({
   const [selectedPool, setSelectedPool] = useState<LotteryPoolData | null>(
     null,
   );
-  const [ticketCount, setTicketCount] = useState<string>('1');
+  const [ticketCount, setTicketCount] = useState<number>(1);
   const {selectedAccount, authorizeSession} = useAuthorization();
   const [signingInProgress, setSigningInProgress] = useState(false);
   const [showPoolInfo, setShowPoolInfo] = useState(false);
   const [currentPoolInfo, setCurrentPoolInfo] =
     useState<LotteryPoolData | null>(null);
+  const [currentLivePool, setCurrentLivePool] =
+    useState<LotteryPoolData | null>(null);
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+
+  // Use refs to prevent timer interference with modal
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const modalVisibleRef = useRef(modalVisible);
+  const currentPoolInfoRef = useRef(currentPoolInfo);
+
+  // Update refs when state changes
+  useEffect(() => {
+    modalVisibleRef.current = modalVisible;
+  }, [modalVisible]);
+
+  useEffect(() => {
+    currentPoolInfoRef.current = currentPoolInfo;
+  }, [currentPoolInfo]);
 
   const {globalState, refreshGlobalState} = useGlobalState();
   const USDC_MINT = globalState?.usdcMint;
@@ -138,6 +161,45 @@ export default function LotteryPoolsComponent({
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim]);
+
+  // Fixed timer effect - only update when no modals are open
+  useEffect(() => {
+    const updateTimer = () => {
+      // Only update timer if no modals are currently open
+      if (!modalVisibleRef.current && !currentPoolInfoRef.current) {
+        setNow(Math.floor(Date.now() / 1000));
+      }
+    };
+
+    timerRef.current = setInterval(updateTimer, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []); // Empty dependency array to prevent re-creation
+
+  // Timer calculation effect - update timeLeft when now or currentLivePool changes
+  useEffect(() => {
+    if (!currentLivePool) {
+      setTimeLeft({hours: 0, minutes: 0, seconds: 0});
+      return;
+    }
+
+    const drawTime = currentLivePool.drawTime;
+    const difference = drawTime - now;
+
+    if (difference > 0) {
+      const hours = Math.floor(difference / 3600);
+      const minutes = Math.floor((difference % 3600) / 60);
+      const seconds = Math.floor(difference % 60);
+
+      setTimeLeft({hours, minutes, seconds});
+    } else {
+      setTimeLeft({hours: 0, minutes: 0, seconds: 0});
+    }
+  }, [currentLivePool, now]);
 
   // Function to get global state PDA
   const getGlobalStatePDA = (): PublicKey => {
@@ -312,7 +374,7 @@ export default function LotteryPoolsComponent({
       setPools(poolsData.reverse());
     } catch (error) {
       console.error('Error fetching pools:', error);
-      alertAndLog('Error', 'Failed to fetch pools');
+      toast.show({message: 'Failed to fetch pools', type: 'error'});
     } finally {
       setLoading(false);
     }
@@ -321,7 +383,19 @@ export default function LotteryPoolsComponent({
   // Load pools on component mount
   useEffect(() => {
     fetchPools();
-  }, []);
+  }, [fetchPools]);
+
+  // Set current live pool when pools change
+  useEffect(() => {
+    if (pools.length > 0) {
+      const activePools = pools.filter(
+        item => item.status !== PoolStatus.Completed,
+      );
+      setCurrentLivePool(activePools[0] || null);
+    } else {
+      setCurrentLivePool(null);
+    }
+  }, [pools]);
 
   // Function to get status text
   const getStatusText = (status: PoolStatus): string => {
@@ -389,19 +463,24 @@ export default function LotteryPoolsComponent({
     }
   };
 
-  // Function to handle buy ticket button press
-  const handleBuyTicket = (pool: LotteryPoolData) => {
+  // Function to handle buy ticket button press - stabilized with useCallback
+  const handleBuyTicket = useCallback((pool: LotteryPoolData) => {
+    // Prevent modal opening if another modal is already open
+    if (modalVisibleRef.current || currentPoolInfoRef.current) {
+      return;
+    }
+
     setSelectedPool(pool);
-    setTicketCount('1');
+    setTicketCount(1);
     setModalVisible(true);
-  };
+  }, []);
 
   // Function to handle ticket count change
-  const handleTicketCountChange = (value: string) => {
+  const handleTicketCountChange = useCallback((value: string) => {
     // Only allow numbers
-    const numericValue = value.replace(/[^0-9]/g, '');
+    const numericValue = parseInt(value.replace(/[^0-9]/g, '')) || 1;
     setTicketCount(numericValue);
-  };
+  }, []);
 
   const createBuyTicketTransaction = useCallback(
     async (poolId: number, quantity: number) => {
@@ -501,7 +580,11 @@ export default function LotteryPoolsComponent({
           {pubkey: poolTokenAccount, isSigner: false, isWritable: true},
           {pubkey: userPubkey, isSigner: true, isWritable: false},
           {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
-          {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+          {
+            pubkey: SystemProgram.programId,
+            isSigner: false,
+            isWritable: false,
+          },
         ];
 
         const instruction = new TransactionInstruction({
@@ -525,12 +608,11 @@ export default function LotteryPoolsComponent({
           signedTx[0].serialize(),
         );
         await connection.confirmTransaction(txid, 'confirmed');
-        // await waitForConfirmation(connection, txid, 30000);
 
         return signedTx[0];
       });
     },
-    [authorizeSession, connection, selectedPool],
+    [authorizeSession, connection, selectedPool, USDC_MINT],
   );
 
   async function waitForConfirmation(
@@ -560,15 +642,14 @@ export default function LotteryPoolsComponent({
     throw new Error('Transaction confirmation timed out');
   }
 
-  // Function to handle confirm buy
-  const handleConfirmBuy = async () => {
+  // Function to handle confirm buy - stabilized with useCallback
+  const handleConfirmBuy = useCallback(async () => {
     if (!selectedPool) return;
     if (signingInProgress) {
       return;
     }
 
-    const quantity = parseInt(ticketCount) || 0;
-    if (quantity <= 0) {
+    if (ticketCount <= 0) {
       Alert.alert('Error', 'Please enter a valid ticket quantity');
       return;
     }
@@ -578,61 +659,72 @@ export default function LotteryPoolsComponent({
     try {
       const signedTransaction = await createBuyTicketTransaction(
         Number(selectedPool?.poolId),
-        quantity,
+        ticketCount,
       );
 
-      // alertAndLog(
-      //   'Purchase Successful',
-      //   `Successfully bought ${quantity} ticket${
-      //     quantity > 1 ? 's' : ''
-      //   } for $${formatUSDC(quantity * selectedPool.ticketPrice)}!`,
-      // );
-
       toast.show({
-        message: `Successfully bought ${quantity} ticket${
-          quantity > 1 ? 's' : ''
-        } for $${formatUSDC(quantity * selectedPool.ticketPrice)}!`,
+        message: `Successfully bought ${ticketCount} ticket${
+          ticketCount > 1 ? 's' : ''
+        } for ${formatNumber(ticketCount * selectedPool.ticketPrice)}!`,
         type: 'success',
       });
 
       // Reset and close modal
-      setTicketCount('1');
+      setTicketCount(1);
       setModalVisible(false);
+      setSelectedPool(null); // Clear selected pool
 
       await fetchPools();
     } catch (err: any) {
-      alertAndLog(
-        'Purchase Failed',
-        err instanceof Error ? err.message : 'Transaction failed',
-      );
+      toast.show({
+        message: err instanceof Error ? err.message : 'Transaction failed',
+        type: 'error',
+      });
     } finally {
       setSigningInProgress(false);
     }
-  };
+  }, [
+    selectedPool,
+    ticketCount,
+    signingInProgress,
+    createBuyTicketTransaction,
+    toast,
+    fetchPools,
+  ]);
 
-  // Function to increment ticket count
-  const incrementTicketCount = () => {
+  // Function to increment ticket count - stabilized with useCallback
+  const incrementTicketCount = useCallback(() => {
     if (!selectedPool) return;
 
-    const currentCount = parseInt(ticketCount) || 0;
     const soldCount = selectedPool.ticketsSold.length;
     const remainingTickets = selectedPool.maxTickets - soldCount;
 
     // Allow user to increment up to the remaining tickets but cap it at 100 for UI safety
     const maxCount = Math.min(remainingTickets, 100);
 
-    if (currentCount < maxCount) {
-      setTicketCount((currentCount + 1).toString());
+    if (ticketCount < maxCount) {
+      setTicketCount(ticketCount + 1);
     }
-  };
+  }, [selectedPool, ticketCount]);
 
-  // Function to decrement ticket count
-  const decrementTicketCount = () => {
-    const currentCount = parseInt(ticketCount) || 0;
-    if (currentCount > 1) {
-      setTicketCount((currentCount - 1).toString());
+  // Function to decrement ticket count - stabilized with useCallback
+  const decrementTicketCount = useCallback(() => {
+    if (ticketCount > 1) {
+      setTicketCount(ticketCount - 1);
     }
-  };
+  }, [ticketCount]);
+
+  // Close modal handler - stabilized with useCallback
+  const closeModal = useCallback(() => {
+    setModalVisible(false);
+    setSelectedPool(null);
+    setTicketCount(1);
+  }, []);
+
+  // Close pool info handler - stabilized with useCallback
+  const closePoolInfo = useCallback(() => {
+    setCurrentPoolInfo(null);
+  }, []);
 
   // Render pool item
   const renderPoolItem = ({item}: {item: LotteryPoolData}) => {
@@ -650,10 +742,6 @@ export default function LotteryPoolsComponent({
       item.ticketsSold,
       selectedAccount?.publicKey,
     );
-
-    // if (!isActive && showActive) {
-    //   return null;
-    // }
 
     return (
       <TouchableOpacity
@@ -685,59 +773,18 @@ export default function LotteryPoolsComponent({
               {getStatusText(item.status)}
             </Text>
           </View>
+          <View style={styles.poolInfoRow}>
+            <Text style={styles.poolInfoValue}>#{item.poolId}</Text>
+          </View>
         </View>
 
         <View style={styles.poolPrize}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <Text style={styles.maxPoolAmount}>
-              ${formatNumber(item.ticketPrice * item.maxTickets)}
+              ~${formatNumber(item.ticketPrice * item.maxTickets)}
             </Text>
           </View>
           <Text style={styles.poolPrizeLabel}>Prize Pool</Text>
-        </View>
-
-        <View style={styles.poolInfo}>
-          <View style={styles.poolInfoRow}>
-            <Text style={styles.poolInfoLabel}>Pool ID</Text>
-            <Text style={styles.poolInfoValue}>#{item.poolId}</Text>
-          </View>
-          <View style={styles.poolInfoRow}>
-            <Text style={styles.poolInfoLabel}>Ticket Price</Text>
-            <Text style={styles.poolInfoValue}>
-              ${formatNumber(item.ticketPrice)}
-            </Text>
-          </View>
-          <View style={styles.poolInfoRow}>
-            <Text style={styles.poolInfoLabel}>Tickets Sold</Text>
-            <Text style={styles.poolInfoValue}>
-              {item.ticketsSold.length}/{item.maxTickets}
-            </Text>
-          </View>
-          {item.drawTime - now > 0 && (
-            <View style={styles.poolInfoRow}>
-              <Text style={styles.poolInfoLabel}>Ends In</Text>
-              <Text style={styles.poolInfoValue}>
-                {getTimeRemaining(item.drawTime)}
-              </Text>
-            </View>
-          )}
-
-          <View style={{alignItems: 'flex-end'}}>
-            {userTicketCount > 0 ? (
-              <View style={styles.ticketBadge}>
-                <Text style={styles.ticketBadgeText}>
-                  You bought: {userTicketCount} tickets
-                </Text>
-              </View>
-            ) : (
-              // Reserve space to keep height consistent
-              <View style={[styles.ticketBadge, {opacity: 0}]}>
-                <Text style={styles.ticketBadgeText}>
-                  You bought: 0 tickets
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
 
         {/* Progress Bar */}
@@ -753,6 +800,16 @@ export default function LotteryPoolsComponent({
           <Text style={styles.progressText}>{progress.toFixed(1)}% Sold</Text>
         </View>
 
+        <View style={{alignItems: 'flex-end', marginBottom: 8}}>
+          {userTicketCount > 0 ? (
+            <View style={styles.ticketBadge}>
+              <Text style={styles.ticketBadgeText}>
+                You bought: {userTicketCount}{' '}
+                {userTicketCount === 1 ? 'ticket' : 'tickets'}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         {/* Buy Ticket Button */}
         {isActive && remainingTickets > 0 && (
           <TouchableOpacity
@@ -761,15 +818,11 @@ export default function LotteryPoolsComponent({
               e.stopPropagation();
               handleBuyTicket(item);
             }}>
-            <Text style={styles.buyButtonText}>Buy Tickets</Text>
+            <Text style={styles.buyButtonText}>
+              Buy Tickets (${formatNumber(item.ticketPrice)})
+            </Text>
           </TouchableOpacity>
         )}
-
-        {/* <TouchableOpacity
-          style={styles.viewMoreButton}
-          onPress={() => setCurrentPoolInfo(item)}>
-          <Text style={styles.buyButtonText}>View More</Text>
-        </TouchableOpacity> */}
       </TouchableOpacity>
     );
   };
@@ -780,511 +833,264 @@ export default function LotteryPoolsComponent({
     </View>
   );
 
-  const renderBuyTicketModal = (): JSX.Element => {
-    if (!selectedPool) return <></>;
+  // Memoize modal calculations
+  const modalCalculations = useMemo(() => {
+    if (!selectedPool) return null;
 
     const soldCount = selectedPool.ticketsSold.length;
     const remainingTickets = selectedPool.maxTickets - soldCount;
     const maxTickets = Math.min(remainingTickets, 100);
-    const currentCount = parseInt(ticketCount) || 0;
-    const totalCost = currentCount * selectedPool.ticketPrice;
+    const totalCost = ticketCount * selectedPool.ticketPrice;
+
+    return {
+      soldCount,
+      remainingTickets,
+      maxTickets,
+      totalCost,
+    };
+  }, [selectedPool, ticketCount]);
+
+  // Memoized modal content
+  const BuyTicketModalContent = useMemo(() => {
+    if (!selectedPool || !modalCalculations) return null;
+
+    const {remainingTickets, maxTickets, totalCost} = modalCalculations;
+
+    return (
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Buy Tickets</Text>
+        <Text style={styles.modalSubtitle}>Pool #{selectedPool.poolId}</Text>
+
+        <View style={styles.ticketInfo}>
+          <Text style={styles.ticketInfoText}>
+            Available Tickets: {remainingTickets}
+          </Text>
+          <Text style={styles.ticketInfoText}>
+            Price per Ticket: ${formatNumber(selectedPool.ticketPrice)}
+          </Text>
+        </View>
+
+        <View style={styles.ticketSelector}>
+          <Text style={styles.selectorLabel}>Number of Tickets</Text>
+          <View style={styles.selectorContainer}>
+            <TouchableOpacity
+              style={[
+                styles.selectorButton,
+                ticketCount <= 1 && styles.selectorButtonDisabled,
+              ]}
+              onPress={decrementTicketCount}
+              disabled={ticketCount <= 1}>
+              <Text style={styles.selectorButtonText}>-</Text>
+            </TouchableOpacity>
+
+            <TextInput
+              style={styles.ticketInput}
+              value={ticketCount.toString()}
+              onChangeText={handleTicketCountChange}
+              keyboardType="numeric"
+              textAlign="center"
+              maxLength={3}
+            />
+
+            <TouchableOpacity
+              style={[
+                styles.selectorButton,
+                ticketCount >= maxTickets && styles.selectorButtonDisabled,
+              ]}
+              onPress={incrementTicketCount}
+              disabled={ticketCount >= maxTickets}>
+              <Text style={styles.selectorButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.maxTicketsText}>Max: {maxTickets} tickets</Text>
+        </View>
+
+        <View style={styles.totalCost}>
+          <Text style={styles.totalCostLabel}>Total Cost</Text>
+          <Text style={styles.totalCostValue}>${formatNumber(totalCost)}</Text>
+        </View>
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          {selectedAccount ? (
+            <TouchableOpacity
+              style={[
+                styles.confirmButton,
+                (ticketCount <= 0 || ticketCount > maxTickets) &&
+                  styles.confirmButtonDisabled,
+              ]}
+              onPress={handleConfirmBuy}
+              disabled={ticketCount <= 0 || ticketCount > maxTickets}>
+              <Text style={styles.confirmButtonText}>Confirm Buy</Text>
+            </TouchableOpacity>
+          ) : (
+            <ConnectButton />
+          )}
+        </View>
+      </View>
+    );
+  }, [
+    selectedPool,
+    modalCalculations,
+    ticketCount,
+    handleTicketCountChange,
+    decrementTicketCount,
+    incrementTicketCount,
+    closeModal,
+    selectedAccount,
+    handleConfirmBuy,
+  ]);
+
+  const renderBuyTicketModal = (): JSX.Element => {
+    if (!modalVisible || !BuyTicketModalContent) return <></>;
 
     return (
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Buy Tickets</Text>
-            <Text style={styles.modalSubtitle}>
-              Pool #{selectedPool.poolId}
-            </Text>
-
-            <View style={styles.ticketInfo}>
-              <Text style={styles.ticketInfoText}>
-                Available Tickets: {remainingTickets}
-              </Text>
-              <Text style={styles.ticketInfoText}>
-                Price per Ticket: ${formatNumber(selectedPool.ticketPrice)}
-              </Text>
-            </View>
-
-            <View style={styles.ticketSelector}>
-              <Text style={styles.selectorLabel}>Number of Tickets</Text>
-              <View style={styles.selectorContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.selectorButton,
-                    currentCount <= 1 && styles.selectorButtonDisabled,
-                  ]}
-                  onPress={decrementTicketCount}
-                  disabled={currentCount <= 1}>
-                  <Text style={styles.selectorButtonText}>-</Text>
-                </TouchableOpacity>
-
-                <TextInput
-                  style={styles.ticketInput}
-                  value={ticketCount}
-                  onChangeText={handleTicketCountChange}
-                  keyboardType="numeric"
-                  textAlign="center"
-                  maxLength={3}
-                />
-
-                <TouchableOpacity
-                  style={[
-                    styles.selectorButton,
-                    currentCount >= maxTickets && styles.selectorButtonDisabled,
-                  ]}
-                  onPress={incrementTicketCount}
-                  disabled={currentCount >= maxTickets}>
-                  <Text style={styles.selectorButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.maxTicketsText}>
-                Max: {maxTickets} tickets
-              </Text>
-            </View>
-
-            <View style={styles.totalCost}>
-              <Text style={styles.totalCostLabel}>Total Cost</Text>
-              <Text style={styles.totalCostValue}>
-                ${formatNumber(totalCost)}
-              </Text>
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              {selectedAccount ? (
-                <TouchableOpacity
-                  style={[
-                    styles.confirmButton,
-                    (currentCount <= 0 || currentCount > maxTickets) &&
-                      styles.confirmButtonDisabled,
-                  ]}
-                  onPress={handleConfirmBuy}
-                  disabled={currentCount <= 0 || currentCount > maxTickets}>
-                  <Text style={styles.confirmButtonText}>Confirm Buy</Text>
-                </TouchableOpacity>
-              ) : (
-                <ConnectButton />
-              )}
-            </View>
-          </View>
-        </View>
+        onRequestClose={closeModal}>
+        <View style={styles.modalOverlay}>{BuyTicketModalContent}</View>
       </Modal>
     );
   };
 
-  const [now, setNow] = useState(Date.now() / 1000);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now() / 1000);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      {/* Pools List or General Empty State */}
-      {loading ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginLeft: isMainScreen ? 100 : undefined,
-          }}>
-          <LoadingIndicator text="Fetching pools..." />
-        </View>
-      ) : pools.length === 0 ? (
-        <View style={[styles.emptyWrapper, {marginLeft: 44}]}>
-          {renderEmptyComponent('New pools coming soon...!')}
-        </View>
-      ) : (
-        <ScrollView
-          horizontal={isMainScreen}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.poolsScrollContainer,
-            pools.filter(item => item.status !== PoolStatus.Completed)
-              .length === 1 &&
-              isMainScreen && {paddingHorizontal: 10}, // Add side padding for single card
-          ]}>
-          {isMainScreen
-            ? pools
-                .filter(item => item.status !== PoolStatus.Completed)
-                .map(item => renderPoolItem({item}))
-            : pools.map(item => renderPoolItem({item}))}
-        </ScrollView>
-      )}
-
-      {/* Main Screen - No Active Pools Message */}
-      {isMainScreen &&
-        pools.length > 0 &&
-        pools.filter(pool => pool.status === PoolStatus.Completed).length ===
-          0 && (
-          <View style={styles.emptyWrapper}>
-            {renderEmptyComponent('New pools coming soon.')}
+  const PoolsList = () => {
+    return (
+      <View style={styles.container}>
+        {/* Pools List or General Empty State */}
+        {loading ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginLeft: isMainScreen ? 100 : undefined,
+            }}>
+            <LoadingIndicator text="Fetching pools..." />
           </View>
+        ) : pools.length === 0 ? (
+          <View style={[styles.emptyWrapper, {marginLeft: 44}]}>
+            {renderEmptyComponent('New pools coming soon...!')}
+          </View>
+        ) : (
+          <ScrollView
+            horizontal={isMainScreen}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.poolsScrollContainer,
+              pools.filter(item => item.status !== PoolStatus.Completed)
+                .length === 1 &&
+                isMainScreen && {paddingHorizontal: 10}, // Add side padding for single card
+            ]}>
+            {isMainScreen
+              ? pools
+                  .filter(item => item.status !== PoolStatus.Completed)
+                  .map(item => renderPoolItem({item}))
+              : pools.map(item => renderPoolItem({item}))}
+          </ScrollView>
         )}
 
-      {/* Buy Ticket Modal */}
-      {renderBuyTicketModal()}
+        {/* Main Screen - No Active Pools Message */}
+        {isMainScreen &&
+          pools.length > 0 &&
+          pools.filter(pool => pool.status !== PoolStatus.Completed).length ===
+            0 && (
+            <View style={styles.emptyWrapper}>
+              {renderEmptyComponent('New pools coming soon.')}
+            </View>
+          )}
 
-      {currentPoolInfo ? (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={true}
-          onRequestClose={() => setCurrentPoolInfo(null)}>
-          <View style={styles.modalOverlay}>
-            <View>
-              <PoolInfoComponent
-                poolData={currentPoolInfo}
-                onClose={() => setCurrentPoolInfo(null)}
-              />
+        {currentPoolInfo ? (
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={true}
+            onRequestClose={closePoolInfo}>
+            <View style={styles.modalOverlay}>
+              <View>
+                <PoolInfoComponent
+                  poolData={currentPoolInfo}
+                  onClose={closePoolInfo}
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : null}
+      </View>
+    );
+  };
+
+  if (!isMainScreen) {
+    return (
+      <View>
+        <PoolsList />
+        {renderBuyTicketModal()}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.poolsSection}>
+      <View style={styles.sectionHeader}>
+        {currentLivePool && (
+          <View style={styles.currentPoolSection}>
+            <View style={styles.currentPoolGlow} />
+
+            <View style={styles.prizePoolContainer}>
+              <Text style={styles.prizePoolLabel}>The FortuneX Lottery</Text>
+              <Text style={styles.prizePoolAmount}>
+                $
+                {formatNumber(
+                  currentLivePool.ticketPrice * currentLivePool.maxTickets,
+                )}
+              </Text>
+              <Text style={styles.prizePoolSubtext}>in Prizes!</Text>
+
+              <TouchableOpacity
+                style={styles.buyTicketsButton}
+                onPress={() => {
+                  handleBuyTicket(currentLivePool);
+                }}>
+                <Text style={styles.buyTicketsText}>Buy Tickets</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.ticketsNowSection}>
+              <Text style={styles.ticketsNowTitle}>Get your tickets now!</Text>
+              <View style={styles.timerContainer}>
+                <View style={styles.timerItem}>
+                  <Text style={styles.timerNumber}>{timeLeft.hours}</Text>
+                  <Text style={styles.timerLabel}>h</Text>
+                </View>
+                <View style={styles.timerItem}>
+                  <Text style={styles.timerNumber}>{timeLeft.minutes}</Text>
+                  <Text style={styles.timerLabel}>m</Text>
+                </View>
+                <View style={styles.timerItem}>
+                  <Text style={styles.timerNumber}>{timeLeft.seconds}</Text>
+                  <Text style={styles.timerLabel}>s</Text>
+                </View>
+              </View>
+
+              <View style={styles.nextDrawInfo}>
+                <Text style={styles.nextDrawLabel}>Next Draw</Text>
+                <Text style={styles.nextDrawTime}>
+                  #{currentLivePool.poolId} | Draw:{' '}
+                  {new Date(
+                    currentLivePool.drawTime * 1000,
+                  ).toLocaleDateString()}
+                </Text>
+              </View>
             </View>
           </View>
-        </Modal>
-      ) : null}
+        )}
+      </View>
+      <PoolsList />
+      {renderBuyTicketModal()}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  poolsScrollContainer: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  poolCard: {
-    width: screenWidth * 0.9,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    marginTop: 10,
-  },
-
-  poolHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  poolType: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  poolTypeText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  poolStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-    marginRight: 6,
-  },
-  poolStatusText: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '600',
-  },
-  poolPrize: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  poolPrizeAmount: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  maxPoolAmount: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#10B981',
-    marginBottom: 4,
-  },
-  poolPrizeLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  poolInfo: {
-    marginBottom: 20,
-  },
-  poolInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  poolInfoLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  poolInfoValue: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  progressContainer: {
-    marginBottom: 20,
-  },
-  progressBackground: {
-    height: 6,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  buyButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buyButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  viewMoreButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  // emptyContainer: {
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   paddingVertical: 60,
-  //   width: 280,
-  // },
-  // emptyText: {
-  //   fontSize: 16,
-  //   color: '#9CA3AF',
-  //   textAlign: 'center',
-  // },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  ticketInfo: {
-    backgroundColor: '#0A0A0A',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  ticketInfoText: {
-    fontSize: 14,
-    color: '#D1D5DB',
-    marginBottom: 4,
-  },
-  ticketSelector: {
-    marginBottom: 20,
-  },
-  selectorLabel: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  selectorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  selectorButton: {
-    backgroundColor: '#2A2A2A',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 8,
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
-  },
-  selectorButtonDisabled: {
-    backgroundColor: '#1A1A1A',
-    opacity: 0.5,
-  },
-  selectorButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  ticketInput: {
-    backgroundColor: '#0A0A0A',
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    width: 80,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    paddingHorizontal: 12,
-  },
-  maxTicketsText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  totalCost: {
-    backgroundColor: '#0A0A0A',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  totalCostLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 4,
-  },
-  totalCostValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#10B981',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#2A2A2A',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
-  },
-  cancelButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    flex: 1,
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: {
-    backgroundColor: '#2A2A2A',
-    opacity: 0.5,
-  },
-  confirmButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyWrapper: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-
-  emptyContainer: {
-    backgroundColor: '#1e1e1e',
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-
-  emptyText: {
-    color: '#aaa',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginVertical: 10,
-    marginLeft: 16,
-  },
-  ticketBadge: {
-    backgroundColor: '#DCFCE7', // Light green
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 6,
-    maxWidth: '100%',
-  },
-
-  ticketBadgeText: {
-    color: '#065F46', // Dark green text
-    fontSize: 12,
-    fontWeight: '600',
-  },
-});

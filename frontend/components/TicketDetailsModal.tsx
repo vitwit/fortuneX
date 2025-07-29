@@ -308,10 +308,13 @@ export default function TicketDetailsModal({
               }
             } catch (err: any) {
               console.error('Cancellation error:', err);
-              alertAndLog(
-                'Cancellation Failed',
-                err instanceof Error ? err.message : 'Failed to cancel ticket',
-              );
+              toast.show({
+                message:
+                  err instanceof Error
+                    ? err.message
+                    : 'Failed to cancel ticket',
+                type: 'error',
+              });
             } finally {
               setCancelling(false);
             }
