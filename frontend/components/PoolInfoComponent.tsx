@@ -8,6 +8,7 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {formatNumber} from '../util/utils';
@@ -104,13 +105,27 @@ export default function PoolInfoComponent({
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const onBackPress = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress,
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   // Function to get status text
   const getStatusText = (status: PoolStatus): string => {
     switch (status) {
       case PoolStatus.Active:
         return 'LIVE';
       case PoolStatus.Drawing:
-        return 'DRAWING';
+        return 'SOLD OUT';
       case PoolStatus.Completed:
         return 'COMPLETED';
       default:

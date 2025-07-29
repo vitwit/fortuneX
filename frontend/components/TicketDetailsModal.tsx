@@ -39,6 +39,7 @@ interface TicketDetailsModalProps {
   amountPaid: string;
   timestamp: string;
   onTicketCancelled?: () => void;
+  poolCompleted: boolean;
 }
 
 // Seeds
@@ -55,6 +56,7 @@ export default function TicketDetailsModal({
   amountPaid,
   timestamp,
   onTicketCancelled,
+  poolCompleted,
 }: TicketDetailsModalProps) {
   const {connection} = useConnection();
   const {selectedAccount, authorizeSession} = useAuthorization();
@@ -369,19 +371,24 @@ export default function TicketDetailsModal({
               <Text style={styles.cancelButtonText}>Close</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.refundButton, cancelling && styles.disabledButton]}
-              onPress={handleCancelTicket}
-              disabled={cancelling}>
-              {cancelling ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#ffffff" />
-                  <Text style={styles.refundButtonText}>Cancelling...</Text>
-                </View>
-              ) : (
-                <Text style={styles.refundButtonText}>Cancel Ticket</Text>
-              )}
-            </TouchableOpacity>
+            {!poolCompleted ? (
+              <TouchableOpacity
+                style={[
+                  styles.refundButton,
+                  cancelling && styles.disabledButton,
+                ]}
+                onPress={handleCancelTicket}
+                disabled={cancelling}>
+                {cancelling ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#ffffff" />
+                    <Text style={styles.refundButtonText}>Cancelling...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.refundButtonText}>Cancel Ticket</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       </View>

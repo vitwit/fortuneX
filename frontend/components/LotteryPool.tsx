@@ -329,7 +329,7 @@ export default function LotteryPoolsComponent({
       case PoolStatus.Active:
         return 'LIVE';
       case PoolStatus.Drawing:
-        return 'DRAWING';
+        return 'SOLD OUT';
       case PoolStatus.Completed:
         return 'COMPLETED';
       default:

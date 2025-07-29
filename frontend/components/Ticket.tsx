@@ -18,6 +18,7 @@ type TicketProps = {
   poolId: string;
   contestName?: string;
   onPress?: () => void;
+  drawDate?: string;
 };
 
 const RaffleTicket = ({
@@ -27,18 +28,31 @@ const RaffleTicket = ({
   poolId,
   contestName = 'FortuneX',
   onPress,
+  drawDate,
 }: TicketProps) => {
   const [scaleAnim] = useState(new Animated.Value(1));
 
   // Format the timestamp to readable date
-  const formatDate = (timestamp: string) => {
+  const formatDate = (timestamp: string, withTime = false) => {
     const date = new Date(parseInt(timestamp) * 1000);
+
+    const dateOptions: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    };
+
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    };
+
     return date
-      .toLocaleDateString('en-US', {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-      })
+      .toLocaleDateString(
+        'en-US',
+        withTime ? {...dateOptions, ...timeOptions} : dateOptions,
+      )
       .toUpperCase();
   };
 
@@ -105,7 +119,7 @@ const RaffleTicket = ({
     contestName,
     ticketCode: generateTicketCode(ticketNumber, poolId),
     boughtDate: formatDate(timestamp),
-    drawDate: 'PENDING', // You can make this dynamic based on pool data
+    drawDate: drawDate ? formatDate(drawDate, true) : null,
     ticketPrice: `$${amountPaid}`,
   };
 
@@ -151,9 +165,11 @@ const RaffleTicket = ({
               </View>
 
               {/* Draw Date */}
-              {/* <Text style={styles.drawDate}>
-                DRAW DATE: {ticketData.drawDate}
-              </Text> */}
+              {ticketData.drawDate ? (
+                <Text style={styles.drawDate}>
+                  DRAW ON: {ticketData.drawDate}
+                </Text>
+              ) : null}
 
               {/* Pool ID */}
               <Text style={styles.poolId}>POOL: {poolId}</Text>
