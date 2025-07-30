@@ -533,4 +533,16 @@ export const styles = StyleSheet.create({
     textShadowOffset: {width: 0, height: 1},
     textShadowRadius: 4,
   },
+
+  loadMoreButton: {
+    marginTop: 10,
+    padding: 10,
+    // backgroundColor: '#1E40AF',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  loadMoreText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });

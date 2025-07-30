@@ -9,6 +9,7 @@ import {
   Animated,
   SafeAreaView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 
 import {
@@ -40,6 +41,7 @@ export default function MainScreen() {
   const [activeTab, setActiveTab] = useState('Home');
   const [pulseAnim] = useState(new Animated.Value(1));
   const {refreshGlobalState, isLoadingGlobalState} = useGlobalState();
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
@@ -98,6 +100,21 @@ export default function MainScreen() {
 
   const handleTabPress = (tab: string) => {
     setActiveTab(tab);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Add your refetch logic here
+      if (selectedAccount) {
+        await fetchAndUpdateBalance(selectedAccount);
+      }
+      await refreshGlobalState();
+    } catch (error) {
+      console.warn('Refresh failed', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const renderTabContent = () => {
@@ -211,7 +228,17 @@ export default function MainScreen() {
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContainer}
-            showsVerticalScrollIndicator={false}>
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={['#10B981']}
+                tintColor="#10B981"
+                title="Refreshing..."
+                titleColor="#FFFFFF"
+              />
+            }>
             {/* Wallet Card */}
 
             {/* Tab Content */}
