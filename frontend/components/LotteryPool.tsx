@@ -485,12 +485,12 @@ export default function LotteryPoolsComponent({
   const createBuyTicketTransaction = useCallback(
     async (poolId: number, quantity: number) => {
       if (!selectedPool || !quantity || quantity <= 0) {
-        Alert.alert('Error', 'Invalid ticket quantity');
+        toast.show({message: 'Invalid ticket quantity', type: 'error'});
         return;
       }
 
       if (!USDC_MINT) {
-        Alert.alert('Failed to fetch global state');
+        toast.show({message: 'Failed to fetch global state', type: 'error'});
         return;
       }
 
@@ -650,7 +650,10 @@ export default function LotteryPoolsComponent({
     }
 
     if (ticketCount <= 0) {
-      Alert.alert('Error', 'Please enter a valid ticket quantity');
+      toast.show({
+        message: 'Please enter a valid ticket quantity',
+        type: 'error',
+      });
       return;
     }
 

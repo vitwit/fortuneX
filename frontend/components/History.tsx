@@ -18,6 +18,7 @@ import {PROGRAM_ID} from '../util/constants';
 import {formatNumber} from '../util/utils';
 import PoolInfoComponent from './PoolInfoComponent';
 import {Buffer} from 'buffer';
+import {useToast} from './providers/ToastProvider';
 
 type TicketDetails = {
   ticket_number: bigint;
@@ -40,6 +41,7 @@ type SelectedTicketInfo = {
   amountPaid: string;
   timestamp: string;
   poolCompleted: boolean;
+  poolBPS: number;
 } | null;
 
 // Pool Status Enum
@@ -88,6 +90,7 @@ export default function UserTicketsComponent() {
     useState<SelectedTicketInfo>(null);
   const [currentPoolInfo, setCurrentPoolInfo] =
     useState<LotteryPoolData | null>(null);
+  const taost = useToast();
 
   // Function to get lottery pool PDA
   const getLotteryPoolPDA = (poolId: number): PublicKey => {
@@ -262,8 +265,7 @@ export default function UserTicketsComponent() {
         await fetchPoolData(poolId);
       }
     } catch (err) {
-      console.error('Failed to fetch user tickets:', err);
-      Alert.alert('Error', 'Failed to fetch user tickets');
+      taost.show({message: 'Faile to fetch tickets', type: 'error'});
     } finally {
       setLoading(false);
     }
@@ -279,6 +281,7 @@ export default function UserTicketsComponent() {
     amountPaid: string,
     timestamp: string,
     poolCompleted: boolean,
+    poolBPS: number,
   ) => {
     setSelectedTicket({
       ticketNumber,
@@ -286,6 +289,7 @@ export default function UserTicketsComponent() {
       amountPaid,
       timestamp,
       poolCompleted,
+      poolBPS,
     });
     setModalVisible(true);
   };
@@ -331,8 +335,9 @@ export default function UserTicketsComponent() {
               }}
               activeOpacity={0.8}>
               <Text style={styles.poolTitle}>
-                🎯 Pool #{userTicket.poolId.toString()} ({ticketList?.length}{' '}
-                Tickets)
+                🎯 Pool #{userTicket.poolId.toString()} (bought{' '}
+                {ticketList?.length}{' '}
+                {ticketList?.length === 1 ? 'Ticket' : 'Tickets'})
               </Text>
             </TouchableOpacity>
 
@@ -376,6 +381,7 @@ export default function UserTicketsComponent() {
                       formatAmount(ticket.amount_paid),
                       ticket.timestamp.toString(),
                       poolData?.status === PoolStatus.Completed,
+                      poolData?.commissionBps ?? 0,
                     )
                   }
                   drawDate={poolData?.drawTime.toString()}
@@ -411,7 +417,9 @@ export default function UserTicketsComponent() {
     );
   }
 
-  if (userTickets.length === 0) {
+  const noTickets = userTickets.every(ticket => ticket.tickets.length === 0);
+
+  if (noTickets) {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
@@ -444,6 +452,7 @@ export default function UserTicketsComponent() {
         timestamp={selectedTicket?.timestamp || ''}
         onTicketCancelled={handleTicketCancelled}
         poolCompleted={selectedTicket?.poolCompleted || false}
+        poolBPS={selectedTicket?.poolBPS || 0}
       />
 
       {currentPoolInfo ? (

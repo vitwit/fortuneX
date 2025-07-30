@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   bannerContainer: {
     width: '100%',
     marginBottom: 24,
-    paddingVertical: 20,
+    paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 16,
     backgroundColor: '#047857',

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import {PROGRAM_ID, SYSTEM_PROGRAM_ADDRESS} from '../util/constants';
 import {useLotteryPool} from '../hooks/useLotteryPools';
+import {useToast} from './providers/ToastProvider';
 
 type ParsedDrawHistory = {
   pubkey: PublicKey;
@@ -61,6 +62,8 @@ export default function RecentWinner() {
   const [recentWinners, setRecentWinners] = useState<ParsedDrawHistory[]>([]);
   const [pulseAnim] = useState(new Animated.Value(1));
   const [slideAnim] = useState(new Animated.Value(0));
+
+  const toast = useToast();
 
   const {getPoolById, fetchPoolData, fetchMultiplePools, poolsData} =
     useLotteryPool();
@@ -144,8 +147,7 @@ export default function RecentWinner() {
 
         setRecentWinners(sortedWinners);
       } catch (err) {
-        console.error('Failed to fetch recent winners:', err);
-        Alert.alert('Error', 'Failed to fetch recent winners');
+        toast.show({message: 'Failed to fetch', type: 'error'});
       } finally {
         setLoading(false);
       }
