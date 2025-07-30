@@ -12,7 +12,6 @@ import {
   Modal,
   TouchableOpacity,
 } from 'react-native';
-import ConnectButton from './ConnectButton';
 import RaffleTicket from './Ticket';
 import TicketDetailsModal from './TicketDetailsModal'; // Import the new modal
 import {PROGRAM_ID} from '../util/constants';
@@ -396,7 +395,6 @@ export default function UserTicketsComponent() {
           <Text style={styles.connectText}>
             Connect your wallet to view your tickets
           </Text>
-          <ConnectButton />
         </View>
       </View>
     );

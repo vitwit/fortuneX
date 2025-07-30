@@ -386,7 +386,9 @@ export default function RecentWinner() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        {recentWinners.map((winner, index) => renderWinnerCard(winner, index))}
+        {recentWinners
+          .slice(0, 2)
+          .map((winner, index) => renderWinnerCard(winner, index))}
       </ScrollView>
     </View>
   );

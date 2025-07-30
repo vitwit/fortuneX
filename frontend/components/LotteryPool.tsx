@@ -910,6 +910,20 @@ export default function LotteryPoolsComponent({
           <Text style={styles.totalCostValue}>${formatNumber(totalCost)}</Text>
         </View>
 
+        {remainingTickets === 0 ? (
+          <View
+            style={{
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: 'red',
+              borderRadius: 10,
+              marginBottom: 8,
+            }}>
+            <Text style={{color: 'white'}}>
+              Tickets sold out, new pool coming soon.
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.modalButtons}>
           <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -968,7 +982,6 @@ export default function LotteryPoolsComponent({
               flex: 1,
               justifyContent: 'center',
               alignItems: 'center',
-              marginLeft: isMainScreen ? 100 : undefined,
             }}>
             <LoadingIndicator text="Fetching pools..." />
           </View>
@@ -1043,12 +1056,12 @@ export default function LotteryPoolsComponent({
             <View style={styles.prizePoolContainer}>
               <Text style={styles.prizePoolLabel}>The FortuneX Lottery</Text>
               <Text style={styles.prizePoolAmount}>
-                $
+                ~$
                 {formatNumber(
                   currentLivePool.ticketPrice * currentLivePool.maxTickets,
                 )}
               </Text>
-              <Text style={styles.prizePoolSubtext}>in Prizes!</Text>
+              <Text style={styles.prizePoolSubtext}>in Prize!</Text>
 
               <TouchableOpacity
                 style={styles.buyTicketsButton}
@@ -1079,10 +1092,8 @@ export default function LotteryPoolsComponent({
               <View style={styles.nextDrawInfo}>
                 <Text style={styles.nextDrawLabel}>Next Draw</Text>
                 <Text style={styles.nextDrawTime}>
-                  #{currentLivePool.poolId} | Draw:{' '}
-                  {new Date(
-                    currentLivePool.drawTime * 1000,
-                  ).toLocaleDateString()}
+                  #{currentLivePool.poolId} |{' '}
+                  {new Date(currentLivePool.drawTime * 1000).toLocaleString()}
                 </Text>
               </View>
             </View>
