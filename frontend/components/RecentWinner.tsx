@@ -423,8 +423,8 @@ export default function RecentWinner() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🎊 Recent Winners</Text>
         <Text style={styles.headerSubtitle}>
-          {recentWinners.length} recent champion
-          {recentWinners.length > 1 ? 's' : ''}
+          {recentWinners.slice(0, 3).length} recent champion
+          {recentWinners.slice(0, 3).length > 1 ? 's' : ''}
         </Text>
         <View style={styles.headerDecoration}>
           <Text style={styles.decorationText}>🎉 Every win counts! 🎉</Text>
@@ -436,7 +436,7 @@ export default function RecentWinner() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
         {recentWinners
-          .slice(0, 2)
+          .slice(0, 3)
           .map((winner, index) => renderWinnerCard(winner, index))}
       </ScrollView>
     </View>
