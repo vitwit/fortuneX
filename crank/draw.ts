@@ -10,7 +10,9 @@ const CONFIG: BotConfig = DEFAULT_BOT_CONFIG;
 interface Bot {
   keypair: number[]; // Serialized keypair
   publicKey: string;
-  // Removed remainingTickets - we don't store this anymore
+  // Bot persona for varied behavior
+  maxTicketsPerPurchase: number; // Each bot has its own max (1-5)
+  skipProbability: number; // Chance to skip a pool (0.0-0.3)
 }
 
 class LotteryBotManager {
@@ -88,11 +90,17 @@ class LotteryBotManager {
       const bot: Bot = {
         keypair: Array.from(keypair.secretKey),
         publicKey: keypair.publicKey.toBase58(),
-        // No remainingTickets field
+        // Randomize bot behavior to make it less suspicious
+        maxTicketsPerPurchase: Math.floor(Math.random() * 5) + 1, // 1-5 tickets
+        skipProbability: Math.random() * 0.3, // 0-30% chance to skip pools
       };
 
       this.bots.push(bot);
-      console.log(`🤖 Created bot ${i + 1}: ${bot.publicKey}`);
+      console.log(
+        `🤖 Created bot ${i + 1}: ${bot.publicKey.slice(0, 8)}... (max: ${
+          bot.maxTicketsPerPurchase
+        } tickets, skip: ${(bot.skipProbability * 100).toFixed(0)}%)`
+      );
     }
   }
 
@@ -287,8 +295,19 @@ class LotteryBotManager {
       const botIndex = this.botKeypairs.findIndex((b) =>
         b.publicKey.equals(bot.publicKey)
       );
+      const botConfig = this.bots[botIndex];
 
       try {
+        // Check if this bot should skip this pool
+        if (Math.random() < botConfig.skipProbability) {
+          console.log(
+            `⏭️ Bot ${botIndex + 1} skipping this pool (${(
+              botConfig.skipProbability * 100
+            ).toFixed(0)}% skip chance)`
+          );
+          continue;
+        }
+
         // Get fresh pool state before each purchase
         const currentPoolInfo = await this.client.getPoolInfo(poolId);
         const currentTicketsSold = currentPoolInfo.ticketsSold?.length || 0;
@@ -300,12 +319,14 @@ class LotteryBotManager {
           break;
         }
 
-        // Calculate how many tickets this bot should buy
-        // Use the minimum of: available tickets, max tickets per purchase
-        const ticketsToBuy = Math.min(
+        // Calculate how many tickets this bot should buy (randomized)
+        const botMaxTickets = Math.min(
           currentAvailableTickets,
-          CONFIG.MAX_TICKETS_PER_PURCHASE
+          botConfig.maxTicketsPerPurchase
         );
+
+        // Add some randomness - bot might buy fewer than their max
+        const ticketsToBuy = Math.floor(Math.random() * botMaxTickets) + 1;
 
         if (ticketsToBuy <= 0) {
           console.log(`⏭️ Bot ${botIndex + 1} - no tickets to buy`);
@@ -318,7 +339,9 @@ class LotteryBotManager {
         console.log(
           `🤖 Bot ${
             botIndex + 1
-          } attempting to buy ${ticketsToBuy} tickets for pool ${poolId} (${currentAvailableTickets} available)`
+          } attempting to buy ${ticketsToBuy} tickets for pool ${poolId} (${currentAvailableTickets} available, bot max: ${
+            botConfig.maxTicketsPerPurchase
+          })`
         );
 
         // Check and fund bot with USDC if needed
