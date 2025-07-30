@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {PROGRAM_ID, SYSTEM_PROGRAM_ADDRESS} from '../util/constants';
+import {useLotteryPool} from '../hooks/useLotteryPools';
 
 type ParsedDrawHistory = {
   pubkey: PublicKey;
@@ -28,6 +29,31 @@ type ParsedDrawHistory = {
   bump: number;
 };
 
+const calculateROI = (winner: ParsedDrawHistory, poolInfo: any) => {
+  const winnerAddress = winner.winner.toBase58();
+
+  // Count how many tickets the winner bought
+  const ticketsBought = poolInfo?.ticketsSold.filter(
+    (ticket: PublicKey) => ticket.toBase58() === winnerAddress,
+  ).length;
+
+  // Calculate investment amount
+  const investmentAmount = ticketsBought * (poolInfo.ticketPrice / 1e6); // Convert from lamports to SOL
+
+  // Calculate ROI
+  const prizeAmountSOL = Number(winner.prizeAmount) / 1e6; // Convert from lamports to SOL
+  const roi = prizeAmountSOL - investmentAmount;
+  const roiPercentage =
+    investmentAmount > 0 ? (roi / investmentAmount) * 100 : 0;
+
+  return {
+    ticketsBought,
+    investmentAmount,
+    roi,
+    roiPercentage,
+  };
+};
+
 export default function RecentWinner() {
   const {connection} = useConnection();
   const {selectedAccount} = useAuthorization();
@@ -35,6 +61,9 @@ export default function RecentWinner() {
   const [recentWinners, setRecentWinners] = useState<ParsedDrawHistory[]>([]);
   const [pulseAnim] = useState(new Animated.Value(1));
   const [slideAnim] = useState(new Animated.Value(0));
+
+  const {getPoolById, fetchPoolData, fetchMultiplePools, poolsData} =
+    useLotteryPool();
 
   const currentWallet = selectedAccount?.publicKey.toBase58();
 
@@ -125,6 +154,14 @@ export default function RecentWinner() {
     fetchRecentWinners();
   }, [connection]);
 
+  useEffect(() => {
+    if (recentWinners.length) {
+      fetchMultiplePools(
+        recentWinners.map(item => item.poolId.toString()).slice(0, 3),
+      );
+    }
+  }, [recentWinners]);
+
   const formatAmount = (amount: bigint): string => {
     return (Number(amount) / 1e6).toFixed(2);
   };
@@ -200,10 +237,22 @@ export default function RecentWinner() {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
+  const formatROIPercentage = (percentage: number): string => {
+    return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(1)}%`;
+  };
+
+  const getROIColor = (roi: number): string => {
+    if (roi > 0) return '#2ECC71'; // Green for positive ROI
+    if (roi < 0) return '#E74C3C'; // Red for negative ROI
+    return '#999'; // Gray for break-even
+  };
+
   const renderWinnerCard = (winner: ParsedDrawHistory, index: number) => {
     const isCurrentUser = isCurrentUserWinner(winner);
     const winnerColors = getWinnerColors(isCurrentUser);
-    const cardDelay = index * 100;
+    const poolData = getPoolById(winner.poolId.toString());
+    const roiData = poolData ? calculateROI(winner, poolData) : null;
+    const roiColor = roiData ? getROIColor(roiData.roi) : '#999';
 
     return (
       <Animated.View
@@ -308,26 +357,24 @@ export default function RecentWinner() {
             </View>
           </View>
 
-          {/* Winning odds */}
-          <View style={styles.oddsSection}>
-            <Text style={styles.oddsText}>
-              Winning Odds: 1 in {winner.totalTickets.toString()}
-            </Text>
-            <View style={styles.oddsBar}>
-              <View
-                style={[
-                  styles.oddsBarFill,
-                  {
-                    width: `${Math.min(
-                      100,
-                      (1 / Number(winner.totalTickets)) * 100 * 10,
-                    )}%`,
-                    backgroundColor: isCurrentUser ? '#FFD700' : '#e5c384',
-                  },
-                ]}
-              />
+          {poolData && roiData ? (
+            <View style={styles.roiSection}>
+              <View style={styles.roiStats}>
+                <View style={styles.roiItem}>
+                  <Text style={styles.roiLabel}>Invested</Text>
+                  <Text style={styles.roiValue}>
+                    ${roiData.investmentAmount.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.roiItem}>
+                  <Text style={styles.roiLabel}>ROI %</Text>
+                  <Text style={[styles.roiPercentage, {color: roiColor}]}>
+                    {formatROIPercentage(roiData.roiPercentage)}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </Animated.View>
     );
@@ -659,5 +706,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  roiSection: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 15,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  roiHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  roiTitle: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  roiStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  roiItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  roiLabel: {
+    color: '#999',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  roiValue: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+  roiPercentage: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
   },
 });

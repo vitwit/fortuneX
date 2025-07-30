@@ -76,7 +76,7 @@ const Toast: React.FC<ToastMessage> = ({type, message}) => {
 const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 100,
     left: 20,
     right: 20,
     paddingVertical: 12,
