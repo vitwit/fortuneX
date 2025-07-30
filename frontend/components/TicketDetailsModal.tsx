@@ -39,6 +39,8 @@ interface TicketDetailsModalProps {
   amountPaid: string;
   timestamp: string;
   onTicketCancelled?: () => void;
+  poolCompleted: boolean;
+  poolBPS: number;
 }
 
 // Seeds
@@ -55,22 +57,44 @@ export default function TicketDetailsModal({
   amountPaid,
   timestamp,
   onTicketCancelled,
+  poolCompleted,
+  poolBPS,
 }: TicketDetailsModalProps) {
   const {connection} = useConnection();
   const {selectedAccount, authorizeSession} = useAuthorization();
   const [cancelling, setCancelling] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const toast = useToast();
   const {globalState} = useGlobalState();
   const USDC_MINT = globalState?.usdcMint;
+
+  // Pool BPS is fixed at 0.5% (50 basis points)
+  const POOL_BPS = poolBPS; // 0.5% = 50 basis points
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(Number(timestamp) * 1000);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  const alertAndLog = (title: string, message: string) => {
-    console.log(`${title}: ${message}`);
-    Alert.alert(title, message);
+  const calculateRefundAmount = (): string => {
+    const amountPaidNum = parseFloat(amountPaid);
+
+    // Get commission BPS from global state (default to 0 if not available)
+    const commissionBps = globalState?.bonusPoolFeeBps || 0;
+
+    // Total BPS to deduct = commission BPS + pool BPS
+    const totalBps = commissionBps + POOL_BPS;
+
+    // Convert BPS to percentage (100 BPS = 1%)
+    const totalFeePercentage = totalBps / 10000;
+
+    // Calculate fee amount
+    const feeAmount = amountPaidNum * totalFeePercentage;
+
+    // Calculate refund amount
+    const refundAmount = amountPaidNum - feeAmount;
+
+    return refundAmount.toFixed(2);
   };
 
   const createCancelTicketTransaction = useCallback(
@@ -265,127 +289,173 @@ export default function TicketDetailsModal({
 
   const handleCancelTicket = async () => {
     if (!selectedAccount?.publicKey) {
-      Alert.alert('Error', 'Please connect your wallet first');
+      toast.show({message: 'Wallet not connected', type: 'error'});
       return;
     }
 
-    // Show confirmation alert
-    Alert.alert(
-      'Cancel Ticket',
-      `Are you sure you want to cancel ticket #${ticketNumber}? You will receive a refund of $${amountPaid}.`,
-      [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              await createCancelTicketTransaction(
-                Number(poolId),
-                BigInt(ticketNumber),
-              );
+    // Show custom confirmation modal
+    setShowConfirmModal(true);
+  };
 
-              // alertAndLog(
-              //   'Ticket Cancelled',
-              //   `Successfully cancelled ticket #${ticketNumber}. Refund of $${amountPaid} has been processed.`,
-              // );
+  const confirmCancellation = async () => {
+    setShowConfirmModal(false);
+    setCancelling(true);
+    try {
+      await createCancelTicketTransaction(Number(poolId), BigInt(ticketNumber));
 
-              toast.show({
-                message: `Successfully cancelled ticket #${ticketNumber}. Refund of $${amountPaid} has been processed.`,
-                type: 'success',
-              });
+      toast.show({
+        message: `Successfully cancelled ticket #${ticketNumber}. Refund of ${calculateRefundAmount()} has been processed.`,
+        type: 'success',
+      });
 
-              // Close modal and trigger refresh
-              onClose();
-              if (onTicketCancelled) {
-                onTicketCancelled();
-              }
-            } catch (err: any) {
-              console.error('Cancellation error:', err);
-              alertAndLog(
-                'Cancellation Failed',
-                err instanceof Error ? err.message : 'Failed to cancel ticket',
-              );
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ],
+      // Close modal and trigger refresh
+      onClose();
+      if (onTicketCancelled) {
+        onTicketCancelled();
+      }
+    } catch (err: any) {
+      console.error('Cancellation error:', err);
+      toast.show({
+        message: err instanceof Error ? err.message : 'Failed to cancel ticket',
+        type: 'error',
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const CancelConfirmationModal = () => {
+    const refundAmount = calculateRefundAmount();
+
+    return (
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmModalContainer}>
+            {/* Header */}
+            <View style={styles.confirmHeader}>
+              <Text style={styles.confirmHeaderTitle}>⚠️ Cancel Ticket</Text>
+            </View>
+
+            {/* Content */}
+            <View style={styles.confirmContent}>
+              <Text style={styles.confirmMessage}>
+                Are you sure you want to cancel ticket #{ticketNumber}?
+              </Text>
+              <View style={styles.refundBreakdown}>
+                <Text style={styles.originalAmountText}>
+                  Original Amount: ${amountPaid}
+                </Text>
+                <Text style={styles.feesText}>Commission will be deducted</Text>
+                <Text style={styles.refundAmountText}>
+                  You will receive: ${refundAmount}
+                </Text>
+              </View>
+            </View>
+
+            {/* Actions */}
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelButton}
+                onPress={() => setShowConfirmModal(false)}>
+                <Text style={styles.confirmCancelButtonText}>
+                  No, Keep Ticket
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmDeleteButton}
+                onPress={confirmCancellation}>
+                <Text style={styles.confirmDeleteButtonText}>
+                  Yes, Cancel Ticket
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     );
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>🎟️ Ticket Details</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Ticket Information */}
-          <View style={styles.content}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Ticket Number:</Text>
-              <Text style={styles.detailValue}>#{ticketNumber}</Text>
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={onClose}>
+        <View style={styles.overlay}>
+          <View style={styles.modalContainer}>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>🎟️ Ticket Details</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Pool ID:</Text>
-              <Text style={styles.detailValue}>#{poolId}</Text>
+            {/* Ticket Information */}
+            <View style={styles.content}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Ticket Number:</Text>
+                <Text style={styles.detailValue}>#{ticketNumber}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Pool ID:</Text>
+                <Text style={styles.detailValue}>#{poolId}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Amount Paid:</Text>
+                <Text style={styles.detailValueAmount}>${amountPaid}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Purchase Date:</Text>
+                <Text style={styles.detailValue}>
+                  {formatTimestamp(timestamp)}
+                </Text>
+              </View>
             </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Amount Paid:</Text>
-              <Text style={styles.detailValueAmount}>${amountPaid}</Text>
+            {/* Actions */}
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onClose}
+                disabled={cancelling}>
+                <Text style={styles.cancelButtonText}>Close</Text>
+              </TouchableOpacity>
+
+              {!poolCompleted ? (
+                <TouchableOpacity
+                  style={[
+                    styles.refundButton,
+                    cancelling && styles.disabledButton,
+                  ]}
+                  onPress={handleCancelTicket}
+                  disabled={cancelling}>
+                  {cancelling ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="#ffffff" />
+                      <Text style={styles.refundButtonText}>Cancelling...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.refundButtonText}>Cancel Ticket</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null}
             </View>
-
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Purchase Date:</Text>
-              <Text style={styles.detailValue}>
-                {formatTimestamp(timestamp)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onClose}
-              disabled={cancelling}>
-              <Text style={styles.cancelButtonText}>Close</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.refundButton, cancelling && styles.disabledButton]}
-              onPress={handleCancelTicket}
-              disabled={cancelling}>
-              {cancelling ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#ffffff" />
-                  <Text style={styles.refundButtonText}>Cancelling...</Text>
-                </View>
-              ) : (
-                <Text style={styles.refundButtonText}>Cancel Ticket</Text>
-              )}
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <CancelConfirmationModal />
+    </>
   );
 }
 
@@ -496,5 +566,110 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  // Confirmation Modal Styles
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmModalContainer: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 350,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+  },
+  confirmHeader: {
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+    alignItems: 'center',
+  },
+  confirmHeaderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  confirmContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  confirmSubMessage: {
+    fontSize: 14,
+    color: '#e5c384',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingTop: 0,
+    gap: 12,
+  },
+  confirmCancelButton: {
+    flex: 1,
+    backgroundColor: '#444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmCancelButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    backgroundColor: '#dc2626',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmDeleteButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  refundBreakdown: {
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    width: '100%',
+  },
+  originalAmountText: {
+    fontSize: 14,
+    color: '#ccc',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  feesText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  refundAmountText: {
+    fontSize: 16,
+    color: '#e5c384',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });

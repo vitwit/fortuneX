@@ -104,27 +104,19 @@ export default function MainScreen() {
     if (activeTab === 'Home') {
       return (
         <View style={styles.homeContent}>
-          {/* Active Pools Section */}
-          <View style={styles.poolsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Live Pools</Text>
-              <TouchableOpacity
-                style={styles.viewAllButton}
-                onPress={() => {
-                  setActiveTab('Pools');
-                }}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.poolsScroll}>
-              <LotteryPoolsComponent isMainScreen={true} />
-            </ScrollView>
+          {/* Banner */}
+          <View style={styles.bannerContainer}>
+            <Text style={styles.bannerText}>
+              <Text style={styles.bannerHighlight}>🎉 FortuneX</Text> creates a{' '}
+              <Text style={styles.bannerHighlight}>millionaire</Text>
+              <View>
+                <Text style={styles.tm}>T&C</Text>
+              </View>{' '}
+              every <Text style={styles.bannerPulse}>hour</Text>
+            </Text>
           </View>
 
+          <LotteryPoolsComponent isMainScreen={true} />
           <RecentWinner />
         </View>
       );
@@ -422,7 +414,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
   homeContent: {
     flex: 1,
@@ -522,7 +514,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 22,
@@ -733,5 +724,47 @@ const styles = StyleSheet.create({
   activeTabLabel: {
     color: '#10B981',
     fontWeight: '600',
+  },
+  bannerContainer: {
+    width: '100%',
+    marginBottom: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    backgroundColor: '#047857',
+    borderColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  bannerText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    textAlign: 'center',
+    fontWeight: '700',
+    lineHeight: 26,
+  },
+
+  bannerPulse: {
+    color: '#FACC15',
+    fontWeight: 'bold',
+    textShadowColor: '#FACC15',
+    textShadowOffset: {width: 0, height: 0},
+    textShadowRadius: 8,
+  },
+  bannerHighlight: {
+    color: '#10B981',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+
+  tm: {
+    fontSize: 10,
+    color: 'white',
   },
 });

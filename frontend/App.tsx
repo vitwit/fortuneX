@@ -19,17 +19,17 @@ import {RPC_URL} from './util/constants';
 
 export default function App() {
   return (
-    <ConnectionProvider config={{commitment: 'processed'}} endpoint={RPC_URL}>
-      <AuthorizationProvider>
-        <NavigationProvider>
-          <ToastProvider>
+    <ToastProvider>
+      <ConnectionProvider config={{commitment: 'processed'}} endpoint={RPC_URL}>
+        <AuthorizationProvider>
+          <NavigationProvider>
             <SafeAreaView style={styles.shell}>
               <MainScreen />
             </SafeAreaView>
-          </ToastProvider>
-        </NavigationProvider>
-      </AuthorizationProvider>
-    </ConnectionProvider>
+          </NavigationProvider>
+        </AuthorizationProvider>
+      </ConnectionProvider>
+    </ToastProvider>
   );
 }
 

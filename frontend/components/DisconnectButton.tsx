@@ -10,6 +10,7 @@ import {
 
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {alertAndLog} from '../util/alertAndLog';
+import {useToast} from './providers/ToastProvider';
 
 type Props = {
   title?: string;
@@ -18,6 +19,7 @@ type Props = {
 
 export default function DisconnectButton({title = 'Disconnect', style}: Props) {
   const {deauthorizeSession} = useAuthorization();
+  const toast = useToast();
   const [disconnecting, setDisconnecting] = useState(false);
 
   const handleDisconnectPress = useCallback(async () => {
@@ -28,10 +30,10 @@ export default function DisconnectButton({title = 'Disconnect', style}: Props) {
         await deauthorizeSession(wallet);
       });
     } catch (err: any) {
-      alertAndLog(
-        'Error during disconnect',
-        err instanceof Error ? err.message : err,
-      );
+      toast.show({
+        message: err instanceof Error ? err.message : err,
+        type: 'error',
+      });
     } finally {
       setDisconnecting(false);
     }

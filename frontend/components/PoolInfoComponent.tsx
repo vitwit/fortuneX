@@ -8,6 +8,7 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {formatNumber} from '../util/utils';
@@ -104,13 +105,27 @@ export default function PoolInfoComponent({
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const onBackPress = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress,
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   // Function to get status text
   const getStatusText = (status: PoolStatus): string => {
     switch (status) {
       case PoolStatus.Active:
         return 'LIVE';
       case PoolStatus.Drawing:
-        return 'DRAWING';
+        return 'SOLD OUT';
       case PoolStatus.Completed:
         return 'COMPLETED';
       default:
@@ -215,26 +230,26 @@ export default function PoolInfoComponent({
           showsVerticalScrollIndicator={false}>
           {/* Pool Type and Status */}
           <View style={styles.statusContainer}>
-            <View style={[styles.poolType, {backgroundColor: poolType.color}]}>
-              <Text style={styles.poolTypeText}>{poolType.type}</Text>
-            </View>
-            <View style={styles.poolStatus}>
+            <View
+              style={[
+                styles.poolType,
+                {backgroundColor: statusColor},
+                {display: 'flex', flexDirection: 'row', alignItems: 'center'},
+              ]}>
               {isActive ? (
                 <Animated.View
                   style={[
                     styles.liveDot,
                     {
-                      backgroundColor: '#10B981',
+                      backgroundColor: '#fff',
                       transform: [{scale: pulseAnim}],
                     },
                   ]}
                 />
               ) : (
-                <View
-                  style={[styles.liveDot, {backgroundColor: statusColor}]}
-                />
+                <View style={[styles.liveDot, {backgroundColor: '#fff'}]} />
               )}
-              <Text style={[styles.poolStatusText, {color: statusColor}]}>
+              <Text style={[styles.poolTypeText]}>
                 {getStatusText(poolData.status)}
               </Text>
             </View>

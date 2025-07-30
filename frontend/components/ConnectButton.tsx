@@ -10,6 +10,7 @@ import {
 
 import {useAuthorization} from './providers/AuthorizationProvider';
 import {alertAndLog} from '../util/alertAndLog';
+import {useToast} from './providers/ToastProvider';
 
 type Props = {
   title?: string;
@@ -21,6 +22,7 @@ export default function ConnectButton({
   style,
 }: Props) {
   const {authorizeSession} = useAuthorization();
+  const toast = useToast();
   const [authorizationInProgress, setAuthorizationInProgress] = useState(false);
 
   const handleConnectPress = useCallback(async () => {
@@ -31,10 +33,10 @@ export default function ConnectButton({
         await authorizeSession(wallet);
       });
     } catch (err: any) {
-      alertAndLog(
-        'Error during connect',
-        err instanceof Error ? err.message : err,
-      );
+      toast.show({
+        message: err instanceof Error ? err.message : err,
+        type: 'error',
+      });
     } finally {
       setAuthorizationInProgress(false);
     }
