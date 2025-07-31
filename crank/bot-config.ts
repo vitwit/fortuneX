@@ -32,32 +32,17 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
 
   // Pool configuration matching your requirements
   POOL_MAX_TICKETS: 100, // 100K tickets
-  TICKET_PRICE_USD: 100, // $10 per ticket
-  POOL_PRIZE_USD: 10000, // $1M prize pool
+  TICKET_PRICE_USD: 1000, // $10 per ticket
+  POOL_PRIZE_USD: 100000, // $1M prize pool
 
   // Cron schedules
-  DRAW_CHECK_INTERVAL: "*/30 * * * * *", // Every 30 seconds
-  BOT_BUY_INTERVAL: "*/120 * * * * *", // Every 10 seconds
-  PURCHASE_DELAY_MS: 1000, // 100ms delay between purchases
+  DRAW_CHECK_INTERVAL: "0 */30 * * * *", // Every 30 minutes
+  BOT_BUY_INTERVAL: "0 0 */3 * * *", // Every 2 hours
+  PURCHASE_DELAY_MS: 300000, // 5 minutes delay between purchases
 
   // File paths
   BOTS_FILE: "./bots.json",
 
   // Network
   FUNDING_BUFFER_MULTIPLIER: 1.1, // 10% extra for gas fees
-};
-
-// You can create different configs for different environments
-export const DEMO_CONFIG: BotConfig = {
-  ...DEFAULT_BOT_CONFIG,
-  BOT_COUNT: 10, // Fewer bots for demo
-  TICKETS_PER_BOT: 1000, // Fewer tickets per bot
-  BOT_BUY_INTERVAL: "*/5 * * * * *", // More frequent buying (every 5 seconds)
-  MAX_TICKETS_PER_PURCHASE: 50,
-};
-
-export const PRODUCTION_CONFIG: BotConfig = {
-  ...DEFAULT_BOT_CONFIG,
-  BOT_BUY_INTERVAL: "*/30 * * * * *", // Less frequent in production
-  PURCHASE_DELAY_MS: 500, // Longer delays in production
 };

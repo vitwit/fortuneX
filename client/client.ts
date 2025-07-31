@@ -228,7 +228,7 @@ export class FortuneXClient {
 
     const tx = await this.program.methods
       .initializePool(
-        new anchor.BN(100_000_000),
+        new anchor.BN(1000_000_000),
         new anchor.BN(100),
         new anchor.BN(100),
         new anchor.BN(drawInterval)
@@ -578,7 +578,7 @@ export class FortuneXClient {
         await this.mintToATA(
           usdcMint,
           userWallet,
-          100_000_000, // 100 USDC
+          2000_000_000, // 100 USDC
           authority
         );
 
@@ -691,7 +691,7 @@ async function main() {
       );
 
       // Create first lottery pool
-      const poolResult = await client.createLotteryPool(creator, 100); // 300 seconds = 5 minutes
+      const poolResult = await client.createLotteryPool(creator, 86_400); // 300 seconds = 5 minutes
       console.log("🎉 First pool created!");
       console.log("Pool ID:", poolResult.poolId);
       console.log("Pool PDA:", poolResult.poolPda.toBase58());

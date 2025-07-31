@@ -20,6 +20,7 @@ import {useToast} from './providers/ToastProvider';
 import bs58 from 'bs58';
 import {Buffer} from 'buffer';
 import {sha256} from '@noble/hashes/sha256';
+import { formatNumber } from '../util/utils';
 
 type ParsedDrawHistory = {
   pubkey: PublicKey;
@@ -317,7 +318,7 @@ export default function RecentWinner() {
                 styles.prizeAmount,
                 isCurrentUser && styles.currentUserPrize,
               ]}>
-              ${formatAmount(winner.prizeAmount)}
+              ${formatNumber(Number(winner.prizeAmount))}
             </Text>
             <Text style={styles.prizeLabel}>Prize Won</Text>
           </View>

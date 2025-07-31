@@ -2,10 +2,11 @@ import { FortuneXClient } from "../client/client";
 import { Keypair, PublicKey, Connection } from "@solana/web3.js";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import cron from "node-cron";
-import { BotConfig, DEFAULT_BOT_CONFIG, DEMO_CONFIG } from "./bot-config";
+import { BotConfig, DEFAULT_BOT_CONFIG } from "./bot-config";
 
 // Choose your configuration here
 const CONFIG: BotConfig = DEFAULT_BOT_CONFIG;
+const POOL_INTERVAL = 86_400;
 
 interface Bot {
   keypair: number[]; // Serialized keypair
@@ -596,10 +597,7 @@ async function drawPools(client: FortuneXClient, wallet: Keypair) {
         );
         console.log("🆕 Initializing new pool...");
 
-        const newPool = await client.createLotteryPool(
-          wallet,
-          info.drawInterval
-        );
+        const newPool = await client.createLotteryPool(wallet, POOL_INTERVAL);
         console.log(`✅ New pool created with ID: ${newPool.poolId}`);
       } else {
         console.log(
