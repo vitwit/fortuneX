@@ -22,6 +22,8 @@ class LotteryBotManager {
   private botKeypairs: Keypair[] = [];
   private globalState: any = null; // Store global state here
   private usdcMint: PublicKey | null = null; // Cache USDC mint
+  private readonly MIN_SOL_BALANCE = 0.1; // Minimum SOL balance threshold
+  private readonly SOL_AIRDROP_AMOUNT = 1; // Amount of SOL to airdrop
 
   constructor(client: FortuneXClient, authority: Keypair) {
     this.client = client;
@@ -116,31 +118,59 @@ class LotteryBotManager {
 
     for (let i = 0; i < this.botKeypairs.length; i++) {
       try {
-        const bot = this.botKeypairs[i];
-
-        // Check current SOL balance
-        const balance = await this.client.provider.connection.getBalance(
-          bot.publicKey
-        );
-        const solBalance = balance / 10 ** 9;
-
-        // Only airdrop if balance is low (less than 0.1 SOL)
-        if (solBalance < 0.1) {
-          await this.client.provider.connection.requestAirdrop(
-            bot.publicKey,
-            1 * 10 ** 9 // 1 SOL
-          );
-          console.log(`✅ Bot ${i + 1} funded with 1 SOL for transaction fees`);
-        } else {
-          console.log(
-            `💰 Bot ${i + 1} already has sufficient SOL (${solBalance.toFixed(
-              3
-            )} SOL)`
-          );
-        }
+        await this.fundBotWithSOLIfNeeded(this.botKeypairs[i], i + 1);
       } catch (error: any) {
         console.log(`❌ Failed to fund bot ${i + 1} with SOL:`, error.message);
       }
+    }
+  }
+
+  // Check and fund individual bot with SOL if needed
+  private async fundBotWithSOLIfNeeded(
+    botKeypair: Keypair,
+    botNumber: number
+  ): Promise<boolean> {
+    try {
+      // Check current SOL balance
+      const balance = await this.client.provider.connection.getBalance(
+        botKeypair.publicKey
+      );
+      const solBalance = balance / 10 ** 9;
+
+      // Only airdrop if balance is low (less than MIN_SOL_BALANCE)
+      if (solBalance < this.MIN_SOL_BALANCE) {
+        console.log(
+          `⛽ Bot ${botNumber} SOL balance low (${solBalance.toFixed(
+            3
+          )} SOL), requesting airdrop...`
+        );
+
+        await this.client.provider.connection.requestAirdrop(
+          botKeypair.publicKey,
+          this.SOL_AIRDROP_AMOUNT * 10 ** 9 // Convert to lamports
+        );
+
+        // Wait for confirmation
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        console.log(
+          `✅ Bot ${botNumber} funded with ${this.SOL_AIRDROP_AMOUNT} SOL for transaction fees`
+        );
+        return true;
+      } else {
+        console.log(
+          `💰 Bot ${botNumber} already has sufficient SOL (${solBalance.toFixed(
+            3
+          )} SOL)`
+        );
+        return true;
+      }
+    } catch (error: any) {
+      console.error(
+        `❌ Failed to fund bot ${botNumber} with SOL:`,
+        error.message
+      );
+      return false;
     }
   }
 
@@ -227,6 +257,42 @@ class LotteryBotManager {
       return true;
     } catch (error: any) {
       console.error(`❌ Failed to fund bot with USDC:`, error.message);
+      return false;
+    }
+  }
+
+  // Fund bot with both SOL and USDC if needed (combined function)
+  private async fundBotIfNeeded(
+    botKeypair: Keypair,
+    botNumber: number,
+    requiredUSDC: number
+  ): Promise<boolean> {
+    try {
+      console.log(`🔍 Checking funding requirements for bot ${botNumber}...`);
+
+      // Check and fund SOL first (needed for transactions)
+      const solFunded = await this.fundBotWithSOLIfNeeded(
+        botKeypair,
+        botNumber
+      );
+      if (!solFunded) {
+        console.error(`❌ Failed to ensure SOL funding for bot ${botNumber}`);
+        return false;
+      }
+
+      // Then check and fund USDC
+      const usdcFunded = await this.fundBotWithUSDCIfNeeded(
+        botKeypair,
+        requiredUSDC
+      );
+      if (!usdcFunded) {
+        console.error(`❌ Failed to ensure USDC funding for bot ${botNumber}`);
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error(`❌ Error funding bot ${botNumber}:`, error.message);
       return false;
     }
   }
@@ -344,9 +410,10 @@ class LotteryBotManager {
           })`
         );
 
-        // Check and fund bot with USDC if needed
-        const fundingSuccess = await this.fundBotWithUSDCIfNeeded(
+        // Check and fund bot with both SOL and USDC if needed
+        const fundingSuccess = await this.fundBotIfNeeded(
           bot,
+          botIndex + 1,
           requiredUSDC
         );
         if (!fundingSuccess) {

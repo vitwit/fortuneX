@@ -37,7 +37,7 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
 
   // Cron schedules
   DRAW_CHECK_INTERVAL: "*/30 * * * * *", // Every 30 seconds
-  BOT_BUY_INTERVAL: "*/10 * * * * *", // Every 10 seconds
+  BOT_BUY_INTERVAL: "*/120 * * * * *", // Every 10 seconds
   PURCHASE_DELAY_MS: 1000, // 100ms delay between purchases
 
   // File paths
