@@ -16,6 +16,11 @@ import {
 import {PROGRAM_ID, SYSTEM_PROGRAM_ADDRESS} from '../util/constants';
 import {useLotteryPool} from '../hooks/useLotteryPools';
 import {useToast} from './providers/ToastProvider';
+// import {sha256} from 'js-sha256';
+import bs58 from 'bs58';
+import {Buffer} from 'buffer';
+import {sha256} from '@noble/hashes/sha256';
+import { formatNumber } from '../util/utils';
 
 type ParsedDrawHistory = {
   pubkey: PublicKey;
@@ -106,13 +111,23 @@ export default function RecentWinner() {
     const fetchRecentWinners = async () => {
       setLoading(true);
       try {
-        const accounts = await connection.getProgramAccounts(PROGRAM_ID);
+        const hash = sha256(new TextEncoder().encode('account:DrawHistory')); // => Uint8Array
+        const discriminator = hash.slice(0, 8); // ✅ stays a Uint8Array
+
+        const filters = [
+          {
+            memcmp: {
+              offset: 0,
+              bytes: bs58.encode(discriminator),
+            },
+          },
+        ];
+
+        const accounts = await connection.getProgramAccounts(PROGRAM_ID, {
+          filters,
+        });
 
         const parsed: ParsedDrawHistory[] = accounts
-          .filter(acc => {
-            const expectedSize = 8 + 137; // 8 bytes discriminator + 137 bytes struct
-            return acc.account.data.length === expectedSize;
-          })
           .map(acc => {
             const data = acc.account.data;
 
@@ -147,6 +162,7 @@ export default function RecentWinner() {
 
         setRecentWinners(sortedWinners);
       } catch (err) {
+        console.log(err);
         toast.show({message: 'Failed to fetch', type: 'error'});
       } finally {
         setLoading(false);
@@ -302,7 +318,7 @@ export default function RecentWinner() {
                 styles.prizeAmount,
                 isCurrentUser && styles.currentUserPrize,
               ]}>
-              ${formatAmount(winner.prizeAmount)}
+              ${formatNumber(Number(winner.prizeAmount))}
             </Text>
             <Text style={styles.prizeLabel}>Prize Won</Text>
           </View>
@@ -423,8 +439,8 @@ export default function RecentWinner() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🎊 Recent Winners</Text>
         <Text style={styles.headerSubtitle}>
-          {recentWinners.length} recent champion
-          {recentWinners.length > 1 ? 's' : ''}
+          {recentWinners.slice(0, 3).length} recent champion
+          {recentWinners.slice(0, 3).length > 1 ? 's' : ''}
         </Text>
         <View style={styles.headerDecoration}>
           <Text style={styles.decorationText}>🎉 Every win counts! 🎉</Text>
@@ -436,7 +452,7 @@ export default function RecentWinner() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
         {recentWinners
-          .slice(0, 2)
+          .slice(0, 3)
           .map((winner, index) => renderWinnerCard(winner, index))}
       </ScrollView>
     </View>

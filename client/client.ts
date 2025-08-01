@@ -52,9 +52,7 @@ export class FortuneXClient {
 
     // Load the IDL - the program ID is embedded in the IDL
     try {
-      const idl = JSON.parse(
-        readFileSync("./idl/fortunex.json", "utf8")
-      );
+      const idl = JSON.parse(readFileSync("./idl/fortunex.json", "utf8"));
       // Program constructor: new Program(idl, provider?, coder?, getCustomResolver?)
       this.program = new Program(idl, this.provider);
 
@@ -230,9 +228,9 @@ export class FortuneXClient {
 
     const tx = await this.program.methods
       .initializePool(
-        new anchor.BN(10_000_000),
-        new anchor.BN(5),
-        new anchor.BN(5),
+        new anchor.BN(1000_000_000),
+        new anchor.BN(100),
+        new anchor.BN(100),
         new anchor.BN(drawInterval)
       )
       .accounts({
@@ -453,13 +451,14 @@ export class FortuneXClient {
     return {
       poolId: pool.poolId.toString(),
       drawInterval: pool.drawInterval.toNumber(),
-      ticketsSold: pool.ticketsSold.toString(),
+      ticketsSold: pool.ticketsSold,
       participants: pool.ticketsSold.map((p: PublicKey) => p.toBase58()),
       createdAt: new Date(pool.createdAt.toNumber() * 1000),
       expiresAt: new Date(expiryTime * 1000),
       isExpired,
       timeRemaining: Math.max(0, expiryTime - currentTime),
       status: pool.status,
+      maxTickets: pool.maxTickets,
     };
   }
 
@@ -526,6 +525,44 @@ export class FortuneXClient {
     return tokenAccount;
   }
 
+  async getOrCreateAssociatedTokenAccount(
+    mint: PublicKey,
+    owner: PublicKey,
+    payer?: Keypair
+  ): Promise<PublicKey> {
+    // Use the provider's wallet as payer if not specified
+    const payerKeypair = payer || (this.provider.wallet as any).payer;
+
+    // Get the ATA address
+    const ata = await getAssociatedTokenAddress(mint, owner);
+
+    try {
+      // Try to fetch the account to see if it exists
+      await getAccount(this.provider.connection, ata);
+      console.log(`✅ ATA already exists: ${ata.toBase58()}`);
+      return ata;
+    } catch (error) {
+      // Account doesn't exist, create it
+      console.log(`📝 Creating ATA for owner: ${owner.toBase58()}`);
+
+      const createAtaInstruction = createAssociatedTokenAccountInstruction(
+        payerKeypair.publicKey, // payer
+        ata, // ata
+        owner, // owner
+        mint // mint
+      );
+
+      const transaction = new Transaction().add(createAtaInstruction);
+
+      await sendAndConfirmTransaction(this.provider.connection, transaction, [
+        payerKeypair,
+      ]);
+
+      console.log(`✅ ATA created: ${ata.toBase58()}`);
+      return ata;
+    }
+  }
+
   // Express API setup
   setupAirdropAPI(usdcMint: PublicKey, authority: Keypair) {
     const app = express();
@@ -541,7 +578,7 @@ export class FortuneXClient {
         await this.mintToATA(
           usdcMint,
           userWallet,
-          100_000_000, // 100 USDC
+          2000_000_000, // 100 USDC
           authority
         );
 
@@ -654,7 +691,7 @@ async function main() {
       );
 
       // Create first lottery pool
-      const poolResult = await client.createLotteryPool(creator, 300); // 300 seconds = 5 minutes
+      const poolResult = await client.createLotteryPool(creator, 86_400); // 300 seconds = 5 minutes
       console.log("🎉 First pool created!");
       console.log("Pool ID:", poolResult.poolId);
       console.log("Pool PDA:", poolResult.poolPda.toBase58());

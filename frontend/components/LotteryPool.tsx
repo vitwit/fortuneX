@@ -114,6 +114,10 @@ export default function LotteryPoolsComponent({
     seconds: 0,
   });
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [loadedCount, setLoadedCount] = useState(0);
+  const [allPoolsLoaded, setAllPoolsLoaded] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
 
   // Use refs to prevent timer interference with modal
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -346,44 +350,65 @@ export default function LotteryPoolsComponent({
     }
   }, [connection]);
 
-  // Function to fetch all pools
-  const fetchPools = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    try {
-      const poolsCount = await fetchGlobalState();
-      const poolsData: LotteryPoolData[] = [];
-      for (let i = 0; i < poolsCount; i++) {
-        try {
-          const poolPDA = getLotteryPoolPDA(i);
-          const accountInfo = await connection.getAccountInfo(poolPDA);
+  const POOLS_BATCH_SIZE = 3;
 
-          if (accountInfo && accountInfo.data) {
-            const poolData = parsePoolData(accountInfo.data);
-            if (poolData) {
-              poolsData.push({
-                ...poolData,
-                address: poolPDA.toString(),
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching pool ${i}:`, error);
+  const fetchPools = useCallback(
+    async (initialLoad = false): Promise<void> => {
+      if (initialLoad) setLoadingInitial(true);
+      else setLoadingMore(true);
+
+      try {
+        const totalPoolsCount = await fetchGlobalState();
+        let start = totalPoolsCount - 1 - loadedCount;
+        let end = Math.max(start - POOLS_BATCH_SIZE + 1, 0);
+
+        if (start < 0) {
+          setAllPoolsLoaded(true);
+          return;
         }
-      }
 
-      setPools(poolsData.reverse());
-    } catch (error) {
-      console.error('Error fetching pools:', error);
-      toast.show({message: 'Failed to fetch pools', type: 'error'});
-    } finally {
-      setLoading(false);
-    }
-  }, [connection, fetchGlobalState]);
+        const newPoolsData: LotteryPoolData[] = [];
+
+        for (let i = start; i >= end; i--) {
+          try {
+            const poolPDA = getLotteryPoolPDA(i);
+            const accountInfo = await connection.getAccountInfo(poolPDA);
+
+            if (accountInfo?.data) {
+              const poolData = parsePoolData(accountInfo.data);
+              if (poolData) {
+                newPoolsData.push({
+                  ...poolData,
+                  address: poolPDA.toString(),
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching pool ${i}:`, error);
+          }
+        }
+
+        setPools(prev => [...prev, ...newPoolsData]);
+        setLoadedCount(prev => prev + (start - end + 1));
+
+        if (end === 0) {
+          setAllPoolsLoaded(true);
+        }
+      } catch (error) {
+        console.error('Error fetching pools:', error);
+        toast.show({message: 'Failed to fetch pools', type: 'error'});
+      } finally {
+        if (initialLoad) setLoadingInitial(false);
+        else setLoadingMore(false);
+      }
+    },
+    [connection, fetchGlobalState, loadedCount],
+  );
 
   // Load pools on component mount
   useEffect(() => {
-    fetchPools();
-  }, [fetchPools]);
+    fetchPools(true);
+  }, []);
 
   // Set current live pool when pools change
   useEffect(() => {
@@ -979,7 +1004,7 @@ export default function LotteryPoolsComponent({
     return (
       <View style={styles.container}>
         {/* Pools List or General Empty State */}
-        {loading ? (
+        {loadingInitial ? (
           <View
             style={{
               flex: 1,
@@ -1008,6 +1033,17 @@ export default function LotteryPoolsComponent({
                   .map(item => renderPoolItem({item}))
               : pools.map(item => renderPoolItem({item}))}
           </ScrollView>
+        )}
+
+        {!isMainScreen && !allPoolsLoaded && !loadingInitial && (
+          <TouchableOpacity
+            style={styles.loadMoreButton}
+            onPress={() => fetchPools(false)}
+            disabled={loadingMore}>
+            <Text style={styles.loadMoreText}>
+              {loadingMore ? 'Loading...' : 'Load More'}
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* Main Screen - No Active Pools Message */}
