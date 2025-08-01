@@ -13,6 +13,12 @@ pub fn draw_winner<'info>(
     let global_state = &ctx.accounts.global_state;
     let clock = Clock::get()?;
 
+    // Check if crank account is whitelisted (only whitelisted creators can draw pools)
+    require!(
+        global_state.is_creator_whitelisted(&ctx.accounts.crank.key()),
+        crate::FortuneXError::Unauthorized
+    );
+
     // Validate pool is ready for draw
     require!(
         lottery_pool.status != PoolStatus::Completed,
